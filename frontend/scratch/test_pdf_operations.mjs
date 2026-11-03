@@ -42,7 +42,6 @@ async function runTests() {
 
   // 3. Test Split PDF
   console.log("\n[TEST 3] Testing splitPdf...");
-  const { splitPdf } = await import("./src/lib/pdfClient.js").catch(() => import("./src/lib/pdfClient.ts"));
   const splitAll = await splitPdf(blob);
   if (splitAll.length !== 3) throw new Error(`Split failed: expected 3 single pages, got ${splitAll.length}`);
   const splitRange = await splitPdf(blob, "1, 3");
@@ -53,7 +52,6 @@ async function runTests() {
 
   // 4. Test Delete Pages
   console.log("\n[TEST 4] Testing deletePdfPages...");
-  const { deletePdfPages } = await import("./src/lib/pdfClient.js").catch(() => import("./src/lib/pdfClient.ts"));
   const deletedBlob = await deletePdfPages(blob, [2]);
   const deletedDoc = await PDFDocument.load(await deletedBlob.arrayBuffer());
   if (deletedDoc.getPageCount() !== 2) throw new Error(`Delete failed: expected 2 pages, got ${deletedDoc.getPageCount()}`);
@@ -61,7 +59,6 @@ async function runTests() {
 
   // 5. Test Rotate PDF
   console.log("\n[TEST 5] Testing rotatePdf...");
-  const { rotatePdf } = await import("./src/lib/pdfClient.js").catch(() => import("./src/lib/pdfClient.ts"));
   const rotatedBlob = await rotatePdf(blob, 90);
   const rotatedDoc = await PDFDocument.load(await rotatedBlob.arrayBuffer());
   if (rotatedDoc.getPage(0).getRotation().angle !== 90) throw new Error("Rotate failed: angle not 90");
@@ -69,42 +66,36 @@ async function runTests() {
 
   // 6. Test Add Page Numbers
   console.log("\n[TEST 6] Testing addPageNumbers...");
-  const { addPageNumbers } = await import("./src/lib/pdfClient.js").catch(() => import("./src/lib/pdfClient.ts"));
   const numberedBlob = await addPageNumbers(blob, { position: "bottom-center", format: "page-of-total" });
   if (numberedBlob.size === 0) throw new Error("Page numbering failed");
   console.log(`✓ addPageNumbers passed: valid output (${numberedBlob.size} bytes).`);
 
   // 7. Test Watermark
   console.log("\n[TEST 7] Testing addWatermark...");
-  const { addWatermark } = await import("./src/lib/pdfClient.js").catch(() => import("./src/lib/pdfClient.ts"));
   const wmBlob = await addWatermark(blob, { text: "CONFIDENTIAL", opacity: 0.3 });
   if (wmBlob.size === 0) throw new Error("Watermark failed");
   console.log(`✓ addWatermark passed: valid output (${wmBlob.size} bytes).`);
 
   // 8. Test Header & Footer
   console.log("\n[TEST 8] Testing addHeaderFooter...");
-  const { addHeaderFooter } = await import("./src/lib/pdfClient.js").catch(() => import("./src/lib/pdfClient.ts"));
   const hfBlob = await addHeaderFooter(blob, "Top Header", "Bottom Footer");
   if (hfBlob.size === 0) throw new Error("Header & Footer failed");
   console.log(`✓ addHeaderFooter passed: valid output (${hfBlob.size} bytes).`);
 
   // 9. Test Crop Margins
   console.log("\n[TEST 9] Testing cropPdfMargins...");
-  const { cropPdfMargins } = await import("./src/lib/pdfClient.js").catch(() => import("./src/lib/pdfClient.ts"));
   const cropBlob = await cropPdfMargins(blob, { top: 36, bottom: 36, left: 36, right: 36 });
   if (cropBlob.size === 0) throw new Error("Crop failed");
   console.log(`✓ cropPdfMargins passed: valid output (${cropBlob.size} bytes).`);
 
   // 10. Test Compress Client
   console.log("\n[TEST 10] Testing compressPdfClient...");
-  const { compressPdfClient } = await import("./src/lib/pdfClient.js").catch(() => import("./src/lib/pdfClient.ts"));
   const compBlob = await compressPdfClient(blob, "balanced");
   if (compBlob.size === 0) throw new Error("Client compression failed");
   console.log(`✓ compressPdfClient passed: valid output (${compBlob.size} bytes).`);
 
   // 11. Test Repair Client
   console.log("\n[TEST 11] Testing repairPdfClient...");
-  const { repairPdfClient } = await import("./src/lib/pdfClient.js").catch(() => import("./src/lib/pdfClient.ts"));
   const repBlob = await repairPdfClient(blob);
   if (repBlob.size === 0) throw new Error("Client repair failed");
   console.log(`✓ repairPdfClient passed: valid output (${repBlob.size} bytes).`);
