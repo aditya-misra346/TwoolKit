@@ -442,7 +442,7 @@ function ImageStudioContent() {
                   setFiles((prev) => [...prev, ...folderFiles]);
                 }
               }}
-              // @ts-ignore
+              // @ts-expect-error - webkitdirectory and directory are browser-specific folder upload attributes
               webkitdirectory=""
               directory=""
               multiple
