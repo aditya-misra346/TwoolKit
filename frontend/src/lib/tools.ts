@@ -1,5 +1,5 @@
 /**
- * Central registry of every tool and navigation structure in Vellum.
+ * Central registry of every tool and navigation structure in TWOOLKIT.
  */
 import type { LucideIcon } from "lucide-react";
 import {

@@ -1,6 +1,6 @@
 "use client";
 /**
- * Client for the Vellum processing API (proxied same-origin under /api).
+ * Client for the TWOOLKIT processing API (proxied same-origin under /api).
  * Upload progress uses XHR (real byte counts); job progress comes from the
  * server's own work-unit accounting; downloads stream with byte progress.
  */

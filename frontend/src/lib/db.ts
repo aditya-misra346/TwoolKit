@@ -1,5 +1,5 @@
 /**
- * Minimal promise-based IndexedDB wrapper. Everything Vellum remembers lives
+ * Minimal promise-based IndexedDB wrapper. Everything TWOOLKIT remembers lives
  * here, in the user's own browser profile — nothing is synced to a server.
  *
  * Stores:
