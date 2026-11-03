@@ -8,7 +8,19 @@ async function runTests() {
 
   // 1. Test Organize Pages
   console.log("\n[TEST 1] Testing organizePdfPages...");
-  const { organizePdfPages } = await import("../src/lib/pdfClient.ts");
+  const {
+    organizePdfPages,
+    mergePdfs,
+    splitPdf,
+    deletePdfPages,
+    rotatePdf,
+    addPageNumbers,
+    addWatermark,
+    addHeaderFooter,
+    cropPdfMargins,
+    compressPdfClient,
+    repairPdfClient,
+  } = await import("../src/lib/pdfClient.ts");
   
   // Reorder: Page 3 (idx 2), Page 1 (idx 0), insert blank (-1), Page 2 (idx 1 with 90 deg rotation)
   const organizedBlob = await organizePdfPages(blob, [
@@ -23,7 +35,6 @@ async function runTests() {
 
   // 2. Test Merge PDFs
   console.log("\n[TEST 2] Testing mergePdfs...");
-  const { mergePdfs } = await import("./src/lib/pdfClient.js").catch(() => import("./src/lib/pdfClient.ts"));
   const mergedBlob = await mergePdfs([blob, blob]);
   const mergedDoc = await PDFDocument.load(await mergedBlob.arrayBuffer());
   if (mergedDoc.getPageCount() !== 6) throw new Error(`Merge failed: expected 6 pages, got ${mergedDoc.getPageCount()}`);
