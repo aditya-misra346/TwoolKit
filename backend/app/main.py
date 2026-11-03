@@ -61,7 +61,7 @@ async def lifespan(_: FastAPI):
     manager.shutdown()
 
 
-app = FastAPI(title="Vellum Processing API", version=config.VERSION, lifespan=lifespan, docs_url="/api/docs", openapi_url="/api/openapi.json")
+app = FastAPI(title="TWOOLKIT Processing API", version=config.VERSION, lifespan=lifespan, docs_url="/api/docs", openapi_url="/api/openapi.json")
 
 app.add_middleware(
     CORSMiddleware,
