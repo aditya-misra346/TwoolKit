@@ -4,7 +4,8 @@ import exifr from 'exifr';
 import UTIF from 'utif2';
 import decodeHeic from 'heic-decode';
 import bmp from 'bmp-js';
-import { GIFEncoder, quantize, applyPalette } from 'gifenc';
+import gifenc from 'gifenc';
+const { GIFEncoder, quantize, applyPalette } = gifenc;
 import UPNG from 'upng-js';
 
 const TEST_DIR = '/tmp/qa_test_images';
