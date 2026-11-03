@@ -160,13 +160,13 @@ export const TOOLS: Tool[] = [
   { id: "images-to-pdf", name: "Images to PDF", description: "Turn JPG, PNG or WebP images into a PDF.", href: "/pdf/images-to-pdf", icon: FileDown, group: "pdf", engine: "local", keywords: "jpg to pdf images png to pdf photo" },
 
   // ---- PDF conversion
-  { id: "pdf-to-word", name: "PDF to Word", description: "Editable DOCX with layout reconstruction.", href: "/pdf/to-word", icon: FileType2, group: "pdf-convert", engine: "server", keywords: "pdf to word docx doc convert", serverOps: ["pdf.to_docx"] },
-  { id: "pdf-to-pptx", name: "PDF to PowerPoint", description: "Slides with editable text where possible.", href: "/pdf/to-pptx", icon: Presentation, group: "pdf-convert", engine: "server", keywords: "pdf to pptx powerpoint slides convert", serverOps: ["pdf.to_pptx"] },
-  { id: "pdf-to-excel", name: "PDF to Excel", description: "Detect tables and export to XLSX.", href: "/pdf/to-excel", icon: FileSpreadsheet, group: "pdf-convert", engine: "server", keywords: "pdf to excel xlsx tables spreadsheet", serverOps: ["pdf.to_xlsx"] },
+  { id: "pdf-to-word", name: "PDF to Word", description: "Editable DOCX with layout reconstruction.", href: "/pdf/to-word", icon: FileType2, group: "pdf-convert", engine: "hybrid", keywords: "pdf to word docx doc convert", serverOps: ["pdf.to_docx"] },
+  { id: "pdf-to-pptx", name: "PDF to PowerPoint", description: "Slides with editable text where possible.", href: "/pdf/to-pptx", icon: Presentation, group: "pdf-convert", engine: "hybrid", keywords: "pdf to pptx powerpoint slides convert", serverOps: ["pdf.to_pptx"] },
+  { id: "pdf-to-excel", name: "PDF to Excel", description: "Detect tables and export to XLSX.", href: "/pdf/to-excel", icon: FileSpreadsheet, group: "pdf-convert", engine: "hybrid", keywords: "pdf to excel xlsx tables spreadsheet", serverOps: ["pdf.to_xlsx"] },
   { id: "pdf-to-image", name: "PDF to Image", description: "JPEG, PNG or WebP per page, in your browser.", href: "/pdf/to-image", icon: FileImage, group: "pdf-convert", engine: "local", keywords: "pdf to jpg jpeg png webp image" },
   { id: "pdf-to-svg", name: "PDF to SVG", description: "Vector SVG per page.", href: "/pdf/to-svg", icon: FileCode2, group: "pdf-convert", engine: "server", keywords: "pdf to svg vector", serverOps: ["pdf.to_svg"] },
   { id: "pdf-to-text", name: "PDF to Text", description: "Extract the text layer locally.", href: "/pdf/to-text", icon: Type, group: "pdf-convert", engine: "local", keywords: "pdf to txt text extract" },
-  { id: "pdf-to-html", name: "PDF to HTML", description: "Single-file HTML with images.", href: "/pdf/to-html", icon: FileCode2, group: "pdf-convert", engine: "server", keywords: "pdf to html web", serverOps: ["pdf.to_html"] },
+  { id: "pdf-to-html", name: "PDF to HTML", description: "Single-file HTML with images.", href: "/pdf/to-html", icon: FileCode2, group: "pdf-convert", engine: "hybrid", keywords: "pdf to html web", serverOps: ["pdf.to_html"] },
   { id: "pdf-extract-images", name: "Extract Images", description: "Pull embedded images out of PDFs.", href: "/pdf/extract-images", icon: Images, group: "pdf-convert", engine: "server", keywords: "extract images pictures photos from pdf", serverOps: ["pdf.extract_images"] },
 
   // ---- converters
