@@ -898,6 +898,14 @@ export default function DedicatedPdfToolPage({ params }: Props) {
               </span>
             </div>
 
+            {/* Validation Error Banner */}
+            {validationError && (
+              <div className="p-3.5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-xs text-red-700 dark:text-red-300 flex items-center gap-2.5 animate-in fade-in">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-600 dark:text-red-400" />
+                <span className="font-medium">{validationError}</span>
+              </div>
+            )}
+
             {/* Options for Rotate */}
             {toolSlug === "rotate" && (
               <div className="space-y-2">
