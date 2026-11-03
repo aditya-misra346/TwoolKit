@@ -52,20 +52,34 @@ export default function FileCompressorPage() {
             return { outputs: res.files, warnings: res.warnings };
           }
 
-          // 2. Images -> In-browser canvas/WebP compression
-          if (["jpg", "jpeg", "png", "webp", "bmp"].includes(ext)) {
+          // 2. Images -> In-browser high-efficiency compression
+          if (["jpg", "jpeg", "png", "webp", "bmp", "tiff", "tif", "heic", "heif", "gif"].includes(ext)) {
             const quality = tier === "low" ? 90 : tier === "balanced" ? 75 : 55;
+            const targetFormat =
+              ext === "heic" || ext === "heif" || (ext === "png" && tier === "max")
+                ? "webp"
+                : ext === "tif"
+                ? "tiff"
+                : (ext as any);
+
             const res = await convertAndOptimizeImage(f.file, {
-              targetFormat: ext === "png" && tier === "max" ? "webp" : (ext as any),
+              targetFormat,
               quality,
               stripMetadata: true,
             });
-            const outName = ext === "png" && tier === "max"
-              ? f.name.replace(".png", "-compressed.webp")
-              : f.name.replace(`.${ext}`, `-compressed.${ext}`);
+
+            const base = f.name.slice(0, f.name.lastIndexOf(".")) || f.name;
+            const outExt = targetFormat === "jpeg" ? "jpg" : targetFormat;
+            const outName = `${base}-compressed.${outExt}`;
 
             return {
-              outputs: [{ name: outName, blob: res.blob }],
+              outputs: [
+                {
+                  name: outName,
+                  blob: res.blob,
+                  note: `${res.width}×${res.height} px · ${formatBytes(res.blob.size)}`,
+                },
+              ],
               warnings: res.warnings,
             };
           }
