@@ -36,3 +36,4 @@ Thumbs.db
 # Local environment secrets
 .env*.local
 .env
+.vercel
