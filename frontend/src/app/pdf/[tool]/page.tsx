@@ -1473,6 +1473,15 @@ export default function DedicatedPdfToolPage({ params }: Props) {
           </div>
         </div>
       )}
+      {/* Consent Modal for Server Processing */}
+      <ConsentModal
+        isOpen={showConsentModal}
+        onClose={() => setShowConsentModal(false)}
+        onConfirm={() => {
+          setShowConsentModal(false);
+          void handleRunTool();
+        }}
+      />
     </div>
   );
 }
