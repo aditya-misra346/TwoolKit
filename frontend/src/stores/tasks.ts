@@ -343,6 +343,8 @@ export function humanError(e: unknown): string {
   if (/out of memory|allocation failed|RangeError: Array buffer/i.test(msg))
     return "The browser ran out of memory for this file. Try a smaller file or close other tabs.";
   if (/Failed to fetch|NetworkError/i.test(msg)) return "Network error — the processing server could not be reached.";
+  if (/HTTP 404|Server returned HTTP 404/i.test(msg))
+    return "The server operation route was not found (HTTP 404). Ensure the processing backend is active or use client-side operations.";
   if (/encrypted/i.test(msg) && /pdf/i.test(msg))
     return "This PDF is encrypted. Unlock it first with the Unlock PDF tool.";
   return msg;
