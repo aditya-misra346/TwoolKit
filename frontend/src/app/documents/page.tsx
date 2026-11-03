@@ -14,6 +14,8 @@ import {
   Sparkles,
   Layers,
   CheckCircle2,
+  FileText,
+  Cpu,
 } from "lucide-react";
 import clsx from "clsx";
 import Link from "next/link";
@@ -84,73 +86,100 @@ export default function DocumentConverterPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto animate-in fade-in duration-200">
+    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-150">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-            <FileType2 className="w-7 h-7 text-blue-600 dark:text-blue-400" />
-            Universal Document Converter
+          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+            <FileType2 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            Universal Document & Tabular Converter
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
-            High-fidelity document conversion powered by headless LibreOffice and native tabular parsers.
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+            High-fidelity document conversion powered by headless LibreOffice and native tabular stream parsers.
           </p>
         </div>
 
         <Link
           href="/documents/presentations"
-          className="px-4 py-2 rounded-xl bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800 text-xs font-semibold flex items-center gap-2 shrink-0 self-start"
+          className="px-3.5 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800/80 text-xs font-semibold flex items-center gap-2 shrink-0 self-start hover:bg-orange-100 transition-colors"
         >
           <Presentation className="w-4 h-4 text-orange-600" />
-          PowerPoint & Slides Studio
+          <span>Presentation Studio</span>
         </Link>
       </div>
 
-      <DropZone
-        onFilesSelected={(newFiles) => setFiles((prev) => [...prev, ...newFiles])}
-        selectedFiles={files}
-        onRemoveFile={(id) => setFiles((prev) => prev.filter((f) => f.id !== id))}
-        onClearAll={() => setFiles([])}
-        title="Drop Word documents, spreadsheets, presentations, or data files"
-        description="Supports DOCX, PPTX, XLSX, ODT, RTF, CSV, TSV, JSON, XML, HTML, Markdown"
-        showToolRecommendations={false}
-      />
+      {files.length === 0 ? (
+        <DropZone
+          onFilesSelected={(newFiles) => setFiles((prev) => [...prev, ...newFiles])}
+          selectedFiles={files}
+          onRemoveFile={(id) => setFiles((prev) => prev.filter((f) => f.id !== id))}
+          onClearAll={() => setFiles([])}
+          title="Drop Word documents, spreadsheets, presentations, or data files"
+          description="Supports DOCX, PPTX, XLSX, ODT, RTF, CSV, TSV, JSON, XML, HTML, and Markdown"
+          showToolRecommendations={false}
+        />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          {/* Staged files */}
+          <div className="lg:col-span-5 space-y-3">
+            <DropZone
+              onFilesSelected={(newFiles) => setFiles((prev) => [...prev, ...newFiles])}
+              selectedFiles={files}
+              onRemoveFile={(id) => setFiles((prev) => prev.filter((f) => f.id !== id))}
+              onClearAll={() => setFiles([])}
+              showToolRecommendations={false}
+            />
+          </div>
 
-      {files.length > 0 && (
-        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
-          <div>
-            <label className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider block mb-2">
-              Select Target Format for {primaryExt.toUpperCase()}
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {/* Target format matrix */}
+          <div className="lg:col-span-7 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs p-5 sm:p-6 space-y-5">
+            <div className="pb-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider block">
+                  Select Target Format
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  Target conversion options for {primaryExt.toUpperCase()}
+                </span>
+              </div>
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 uppercase">
+                From .{primaryExt}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
               {availableTargets.map((target) => (
                 <button
                   key={target}
                   type="button"
                   onClick={() => setTargetFormat(target)}
                   className={clsx(
-                    "p-3.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-1",
+                    "p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 cursor-pointer",
                     targetFormat === target
-                      ? "border-blue-500 bg-blue-50 text-blue-900 dark:bg-blue-950/60 dark:text-blue-100 font-bold shadow-xs"
-                      : "border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300"
+                      ? "border-blue-500 bg-blue-50 text-blue-900 dark:bg-blue-950/60 dark:text-blue-100 font-bold shadow-2xs"
+                      : "border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60"
                   )}
                 >
                   <span className="text-sm uppercase font-mono">{target}</span>
                   <span className="text-[10px] text-slate-400 capitalize">
-                    {target === "pdf" ? "Portable Document" : `${target.toUpperCase()} File`}
+                    {target === "pdf" ? "Portable Doc" : `${target.toUpperCase()} Format`}
                   </span>
                 </button>
               ))}
             </div>
-          </div>
 
-          <div className="pt-2">
-            <button
-              onClick={handleRunConversion}
-              className="w-full py-3 px-6 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
-            >
-              <Play className="w-4 h-4 fill-current" />
-              <span>Convert {files.length} Document(s) to {targetFormat.toUpperCase()}</span>
-            </button>
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                <Cpu className="w-3.5 h-3.5 text-blue-500" />
+                <span>LibreOffice Headless & Stream Pipeline</span>
+              </div>
+              <button
+                onClick={handleRunConversion}
+                className="py-2.5 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>Convert to {targetFormat.toUpperCase()}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
