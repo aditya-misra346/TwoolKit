@@ -9,12 +9,16 @@ const backendUrl =
 const nextConfig: NextConfig = {
   async rewrites() {
     if (!backendUrl) return [];
-    return [
-      {
-        source: "/api/:path*",
-        destination: `${backendUrl}/api/:path*`,
-      },
-    ];
+    return {
+      beforeFiles: [
+        {
+          source: "/api/:path*",
+          destination: `${backendUrl}/api/:path*`,
+        },
+      ],
+      afterFiles: [],
+      fallback: [],
+    };
   },
   turbopack: {
     rules: {
