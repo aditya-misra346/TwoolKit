@@ -4,6 +4,8 @@ import { useState } from "react";
 import { DropZone, type StagedFile } from "@/components/DropZone";
 import { useQueue } from "@/stores/tasks";
 import { runServerJob } from "@/lib/api";
+import { useSettings } from "@/stores/settings";
+import { ConsentModal } from "@/components/ConsentModal";
 import { extOf } from "@/lib/fileTypes";
 import {
   Presentation,
