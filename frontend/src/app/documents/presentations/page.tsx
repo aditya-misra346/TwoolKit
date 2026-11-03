@@ -13,6 +13,8 @@ import {
   Play,
   ArrowLeft,
   Sparkles,
+  Sliders,
+  Cpu,
 } from "lucide-react";
 import Link from "next/link";
 import clsx from "clsx";
@@ -84,164 +86,184 @@ export default function PresentationStudioPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in duration-200">
-      <div className="flex items-center gap-3">
+    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-150">
+      {/* Top Header */}
+      <div className="flex items-center gap-3 pb-1 border-b border-slate-200/60 dark:border-slate-800/60">
         <Link
           href="/documents"
-          className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+          className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
         </Link>
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
-            <Presentation className="w-6 h-6 text-orange-500" />
+          <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+            <Presentation className="w-5 h-5 text-orange-500" />
             Presentation & Slides Studio
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Convert PowerPoint decks (PPTX, PPT, ODP) and PDFs to high-resolution slide images, PDF documents, or slideshow videos.
+            Convert PowerPoint decks (PPTX, PPT, ODP) and PDF slide decks to high-res images, PDF documents, or timed MP4 video.
           </p>
         </div>
       </div>
 
-      <DropZone
-        onFilesSelected={(newFiles) => setFiles((prev) => [...prev, ...newFiles])}
-        selectedFiles={files}
-        onRemoveFile={(id) => setFiles((prev) => prev.filter((f) => f.id !== id))}
-        onClearAll={() => setFiles([])}
-        accept=".pptx,.ppt,.odp,.pdf"
-        title="Drop PowerPoint presentations or PDF decks here"
-        description="Supports PPTX, PPT, ODP, and PDF documents"
-        showToolRecommendations={false}
-      />
-
-      {files.length > 0 && (
-        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
-          <div>
-            <label className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider block mb-2">
-              Select Output Mode
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <button
-                type="button"
-                onClick={() => setOutputMode("pdf")}
-                className={clsx(
-                  "p-4 rounded-2xl border text-left transition-all",
-                  outputMode === "pdf"
-                    ? "border-orange-500 bg-orange-50/60 dark:bg-orange-950/40 text-orange-950 dark:text-orange-100 font-bold shadow-xs"
-                    : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
-                )}
-              >
-                <FileType2 className="w-5 h-5 text-orange-600 mb-2" />
-                <div className="font-bold text-sm">Slides to PDF</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">
-                  Vector slide document ready for printing and sharing
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setOutputMode("images")}
-                className={clsx(
-                  "p-4 rounded-2xl border text-left transition-all",
-                  outputMode === "images"
-                    ? "border-orange-500 bg-orange-50/60 dark:bg-orange-950/40 text-orange-950 dark:text-orange-100 font-bold shadow-xs"
-                    : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
-                )}
-              >
-                <Images className="w-5 h-5 text-orange-600 mb-2" />
-                <div className="font-bold text-sm">Extract Slide Images</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">
-                  High-res PNG, JPEG, or WebP images packed into a ZIP
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setOutputMode("video")}
-                className={clsx(
-                  "p-4 rounded-2xl border text-left transition-all",
-                  outputMode === "video"
-                    ? "border-orange-500 bg-orange-50/60 dark:bg-orange-950/40 text-orange-950 dark:text-orange-100 font-bold shadow-xs"
-                    : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
-                )}
-              >
-                <Video className="w-5 h-5 text-orange-600 mb-2" />
-                <div className="font-bold text-sm">Slideshow Video (MP4)</div>
-                <div className="text-[11px] text-slate-500 mt-0.5">
-                  Render timed slides into an MP4 video with OpenCV
-                </div>
-              </button>
-            </div>
+      {files.length === 0 ? (
+        <DropZone
+          onFilesSelected={(newFiles) => setFiles((prev) => [...prev, ...newFiles])}
+          selectedFiles={files}
+          onRemoveFile={(id) => setFiles((prev) => prev.filter((f) => f.id !== id))}
+          onClearAll={() => setFiles([])}
+          accept=".pptx,.ppt,.odp,.pdf"
+          title="Drop PowerPoint presentations or PDF decks here"
+          description="Supports PPTX, PPT, ODP, and PDF documents"
+          showToolRecommendations={false}
+        />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          {/* Staged files deck */}
+          <div className="lg:col-span-5 space-y-3">
+            <DropZone
+              onFilesSelected={(newFiles) => setFiles((prev) => [...prev, ...newFiles])}
+              selectedFiles={files}
+              onRemoveFile={(id) => setFiles((prev) => prev.filter((f) => f.id !== id))}
+              onClearAll={() => setFiles([])}
+              accept=".pptx,.ppt,.odp,.pdf"
+              showToolRecommendations={false}
+            />
           </div>
 
-          {/* Options for Slide Images */}
-          {outputMode === "images" && (
+          {/* Settings & Mode panel */}
+          <div className="lg:col-span-7 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs p-5 sm:p-6 space-y-5">
             <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
-                Image Format:
-              </label>
-              <div className="flex gap-2">
-                {(["png", "jpeg", "webp"] as const).map((fmt) => (
-                  <button
-                    key={fmt}
-                    type="button"
-                    onClick={() => setImageFormat(fmt)}
-                    className={clsx(
-                      "px-4 py-2 rounded-xl text-xs font-semibold uppercase border transition-all",
-                      imageFormat === fmt
-                        ? "border-orange-500 bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300"
-                        : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
-                    )}
-                  >
-                    {fmt}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Options for Video */}
-          {outputMode === "video" && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                  Seconds per Slide: {secondsPerSlide}s
-                </label>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  step="0.5"
-                  value={secondsPerSlide}
-                  onChange={(e) => setSecondsPerSlide(parseFloat(e.target.value))}
-                  className="w-full"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                  Video Resolution:
-                </label>
-                <select
-                  value={videoWidth}
-                  onChange={(e) => setVideoWidth(parseInt(e.target.value, 10))}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+              <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider block mb-2">
+                Select Presentation Mode
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setOutputMode("pdf")}
+                  className={clsx(
+                    "p-3 rounded-xl border text-left transition-all cursor-pointer",
+                    outputMode === "pdf"
+                      ? "border-orange-500 bg-orange-50/60 dark:bg-orange-950/40 text-orange-950 dark:text-orange-100 font-bold shadow-2xs"
+                      : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                  )}
                 >
-                  <option value={1920}>Full HD (1920x1080)</option>
-                  <option value={1280}>HD (1280x720)</option>
-                  <option value={854}>SD (854x480)</option>
-                </select>
+                  <FileType2 className="w-4 h-4 text-orange-600 mb-1.5" />
+                  <div className="font-bold text-xs">Slides to PDF</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5 leading-tight">
+                    Vector slide document ready for distribution
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setOutputMode("images")}
+                  className={clsx(
+                    "p-3 rounded-xl border text-left transition-all cursor-pointer",
+                    outputMode === "images"
+                      ? "border-orange-500 bg-orange-50/60 dark:bg-orange-950/40 text-orange-950 dark:text-orange-100 font-bold shadow-2xs"
+                      : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                  )}
+                >
+                  <Images className="w-4 h-4 text-orange-600 mb-1.5" />
+                  <div className="font-bold text-xs">Extract Slide Images</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5 leading-tight">
+                    PNG, JPEG, or WebP per slide
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setOutputMode("video")}
+                  className={clsx(
+                    "p-3 rounded-xl border text-left transition-all cursor-pointer",
+                    outputMode === "video"
+                      ? "border-orange-500 bg-orange-50/60 dark:bg-orange-950/40 text-orange-950 dark:text-orange-100 font-bold shadow-2xs"
+                      : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                  )}
+                >
+                  <Video className="w-4 h-4 text-orange-600 mb-1.5" />
+                  <div className="font-bold text-xs">Slideshow Video</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5 leading-tight">
+                    Rendered MP4 via OpenCV
+                  </div>
+                </button>
               </div>
             </div>
-          )}
 
-          <div className="pt-2">
-            <button
-              onClick={handleRunPresentationTask}
-              className="w-full py-3 px-6 rounded-2xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-sm shadow-md shadow-orange-500/20 transition-all flex items-center justify-center gap-2"
-            >
-              <Play className="w-4 h-4 fill-current" />
-              <span>Process {files.length} Presentation(s)</span>
-            </button>
+            {/* Options for Slide Images */}
+            {outputMode === "images" && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                  Image Format:
+                </label>
+                <div className="flex gap-2">
+                  {(["png", "jpeg", "webp"] as const).map((fmt) => (
+                    <button
+                      key={fmt}
+                      type="button"
+                      onClick={() => setImageFormat(fmt)}
+                      className={clsx(
+                        "px-3 py-1.5 rounded-lg text-xs font-semibold uppercase border transition-all cursor-pointer",
+                        imageFormat === fmt
+                          ? "border-orange-500 bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300"
+                          : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                      )}
+                    >
+                      {fmt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Options for Video */}
+            {outputMode === "video" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    Duration per Slide: {secondsPerSlide}s
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    step="0.5"
+                    value={secondsPerSlide}
+                    onChange={(e) => setSecondsPerSlide(parseFloat(e.target.value))}
+                    className="w-full mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    Output Resolution:
+                  </label>
+                  <select
+                    value={videoWidth}
+                    onChange={(e) => setVideoWidth(parseInt(e.target.value, 10))}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs focus:outline-hidden"
+                  >
+                    <option value={1920}>Full HD (1920x1080)</option>
+                    <option value={1280}>HD (1280x720)</option>
+                    <option value={854}>SD (854x480)</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
+                <Cpu className="w-3.5 h-3.5 text-orange-500" />
+                <span>Local Server Headless Rendering</span>
+              </div>
+              <button
+                onClick={handleRunPresentationTask}
+                className="py-2.5 px-6 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>Process {files.length} Deck(s)</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
