@@ -151,17 +151,20 @@ export default function DashboardPage() {
     <div className="space-y-8 animate-in fade-in duration-150">
       {/* 1. Welcome Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-1">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span>Workspace Online · Dual Processing Engine</span>
+        <div className="flex items-start gap-3.5">
+          <Logo variant="icon" size="lg" className="hidden sm:inline-flex mt-0.5" />
+          <div>
+            <div className="flex items-center gap-2 text-xs font-semibold text-blue-600 dark:text-blue-400 mb-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>TWOOLKIT Workspace · Dual Processing Engine</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+              Universal File Management & Processing
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+              Enterprise document conversion, deep cryptographic scanning, storage analytics, and multi-format compression.
+            </p>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Universal File Management & Processing
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
-            Enterprise document conversion, deep cryptographic scanning, storage analytics, and multi-format compression.
-          </p>
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0">
