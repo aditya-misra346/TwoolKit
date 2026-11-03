@@ -182,7 +182,7 @@ export default function SettingsPage() {
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-            Vellum includes built-in local heuristics for document inspection. Providing a Google Gemini API Key enables deep semantic summarization, key fact extraction, and conversion compatibility scoring.
+            TWOOLKIT includes built-in local heuristics for document inspection. Providing a Google Gemini API Key enables deep semantic summarization, key fact extraction, and conversion compatibility scoring.
           </p>
 
           <div className="flex items-center gap-2">

@@ -261,7 +261,7 @@ export default function StorageManagerPage() {
                 Secure Sandboxed Storage Access
               </span>
               <p className="leading-relaxed text-[11px]">
-                Vellum operates in accordance with web sandbox security. Only directories and files you explicitly select or drag into the workspace are scanned. System-wide disk bypasses are never performed.
+                TWOOLKIT operates in accordance with web sandbox security. Only directories and files you explicitly select or drag into the workspace are scanned. System-wide disk bypasses are never performed.
               </p>
             </div>
           </div>
