@@ -94,7 +94,8 @@ export async function renderPdfThumbnails(
       const ctx = canvas.getContext("2d");
 
       if (ctx) {
-        await page.render({
+        await (page.render as any)({
+          canvas,
           canvasContext: ctx,
           viewport: scaledViewport,
         }).promise;
