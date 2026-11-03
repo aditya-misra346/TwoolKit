@@ -35,6 +35,9 @@ import {
   FileSpreadsheet,
   FileType2,
   Images,
+  Cpu,
+  Layers,
+  Settings,
 } from "lucide-react";
 import Link from "next/link";
 import clsx from "clsx";
@@ -62,9 +65,7 @@ export default function DedicatedPdfToolPage({ params }: Props) {
   const [pageNumberFmt, setPageNumberFmt] = useState<"number" | "page-of-total" | "page-n">("page-of-total");
   const [splitRange, setSplitRange] = useState("");
   const [pptxMode, setPptxMode] = useState<"hybrid" | "image">("hybrid");
-  const [cropMargins, setCropMargins] = useState({ top: 36, bottom: 36, left: 36, right: 36 });
   const [compressLevel, setCompressLevel] = useState<"low" | "balanced" | "max">("balanced");
-  const [ocrLang, setOcrLang] = useState("eng");
 
   const isImagesToPdf = toolSlug === "images-to-pdf";
   const acceptedExt = isImagesToPdf ? ".jpg,.jpeg,.png,.webp,.bmp" : ".pdf";
@@ -73,12 +74,11 @@ export default function DedicatedPdfToolPage({ params }: Props) {
     if (files.length === 0) return;
 
     if (toolSlug === "merge" || toolSlug === "pdf-merge") {
-      // Local client-side merge
       enqueue(
         { title: "Merge PDFs", tool: "pdf-merge", kind: "pdf", statKind: "pdf" },
         [
           {
-            label: `Merged (${files.length} PDFs)`,
+            label: `Merged Document (${files.length} PDFs)`,
             engine: "local",
             run: async (ctx) => {
               const mergedBlob = await mergePdfs(
@@ -175,7 +175,7 @@ export default function DedicatedPdfToolPage({ params }: Props) {
         { title: "Images to PDF", tool: "images-to-pdf", kind: "pdf", statKind: "pdf" },
         [
           {
-            label: `Compiled (${files.length} images)`,
+            label: `Compiled PDF (${files.length} images)`,
             engine: "local",
             run: async (ctx) => {
               const pdfBlob = await imagesToPdf(
@@ -230,7 +230,7 @@ export default function DedicatedPdfToolPage({ params }: Props) {
 
     enqueue(
       {
-        title: tool?.name || "PDF Task",
+        title: tool?.name || "PDF Operation",
         tool: tool?.id || "pdf",
         kind: "pdf",
         statKind: toolSlug.includes("convert") || toolSlug.includes("to-") ? "convert" : "pdf",
@@ -250,220 +250,291 @@ export default function DedicatedPdfToolPage({ params }: Props) {
     setDrawer(true);
   };
 
+  const isLocalEngine = tool?.engine === "local" || isImagesToPdf || ["merge", "split", "rotate", "page-numbers", "watermark"].includes(toolSlug);
+
   return (
-    <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in duration-200">
-      {/* Top Bar with Back Navigation */}
-      <div className="flex items-center gap-3">
-        <Link
-          href="/pdf"
-          className="p-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </Link>
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-            {tool?.name || "PDF Utility"}
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            {tool?.description || "Configure and execute your document task"}
-          </p>
+    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-150">
+      {/* Top Header Bar */}
+      <div className="flex items-center justify-between pb-1 border-b border-slate-200/60 dark:border-slate-800/60">
+        <div className="flex items-center gap-3">
+          <Link
+            href="/pdf"
+            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div>
+            <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+              <span>{tool?.name || "PDF Workspace Tool"}</span>
+              <span className={clsx(
+                "text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded",
+                isLocalEngine
+                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                  : "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+              )}>
+                {isLocalEngine ? "In-Browser" : "High-Fidelity Engine"}
+              </span>
+            </h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {tool?.description || "Configure parameters and run the document operation"}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Upload DropZone */}
-      <DropZone
-        onFilesSelected={(newFiles) => setFiles((prev) => [...prev, ...newFiles])}
-        selectedFiles={files}
-        onRemoveFile={(id) => setFiles((prev) => prev.filter((f) => f.id !== id))}
-        onClearAll={() => setFiles([])}
-        accept={acceptedExt}
-        title={isImagesToPdf ? "Drop images to convert into PDF" : "Drop PDF file(s) here"}
-        description={isImagesToPdf ? "Supports PNG, JPEG, WebP, BMP" : "Select or drag PDF documents to process"}
-        showToolRecommendations={false}
-      />
+      {/* Main Workspace Layout */}
+      {files.length === 0 ? (
+        <DropZone
+          onFilesSelected={(newFiles) => setFiles((prev) => [...prev, ...newFiles])}
+          selectedFiles={files}
+          onRemoveFile={(id) => setFiles((prev) => prev.filter((f) => f.id !== id))}
+          onClearAll={() => setFiles([])}
+          accept={acceptedExt}
+          title={isImagesToPdf ? "Drop images to convert into a compiled PDF" : `Drop PDF file(s) for ${tool?.name || "processing"}`}
+          description={isImagesToPdf ? "Supports PNG, JPEG, WebP, BMP images" : "Select or drag PDF documents to begin"}
+          showToolRecommendations={false}
+        />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          {/* Left Column: Uploaded Files & Staging Deck (5 cols) */}
+          <div className="lg:col-span-5 space-y-4">
+            <DropZone
+              onFilesSelected={(newFiles) => setFiles((prev) => [...prev, ...newFiles])}
+              selectedFiles={files}
+              onRemoveFile={(id) => setFiles((prev) => prev.filter((f) => f.id !== id))}
+              onClearAll={() => setFiles([])}
+              accept={acceptedExt}
+              showToolRecommendations={false}
+            />
+          </div>
 
-      {/* Tool-Specific Options Panel */}
-      {files.length > 0 && (
-        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider text-xs">
-            Tool Options & Parameters
-          </h2>
-
-          {/* Options for to-pptx */}
-          {(toolSlug === "to-pptx" || toolSlug === "pdf-to-pptx") && (
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Conversion Mode:
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setPptxMode("hybrid")}
-                  className={clsx(
-                    "p-3 rounded-xl border text-left text-xs transition-all",
-                    pptxMode === "hybrid"
-                      ? "border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100"
-                      : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
-                  )}
-                >
-                  <div className="font-bold">Hybrid (Recommended)</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">
-                    Extracts editable text boxes with original vector art & backgrounds
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPptxMode("image")}
-                  className={clsx(
-                    "p-3 rounded-xl border text-left text-xs transition-all",
-                    pptxMode === "image"
-                      ? "border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100"
-                      : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
-                  )}
-                >
-                  <div className="font-bold">Image Slides</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">
-                    Renders full-resolution page images as slide backgrounds
-                  </div>
-                </button>
+          {/* Right Column: Settings & Execution Controls (7 cols) */}
+          <div className="lg:col-span-7 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs p-5 sm:p-6 space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <Settings className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+                  Operation Settings
+                </h2>
               </div>
+              <span className="text-[11px] text-slate-400">
+                {files.length} document(s) staged
+              </span>
             </div>
-          )}
 
-          {/* Options for Password Protect */}
-          {(toolSlug === "protect" || toolSlug === "pdf-protect") && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Options for to-pptx */}
+            {(toolSlug === "to-pptx" || toolSlug === "pdf-to-pptx") && (
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Slide Layout Reconstruction:
+                </label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setPptxMode("hybrid")}
+                    className={clsx(
+                      "p-3 rounded-xl border text-left text-xs transition-all cursor-pointer",
+                      pptxMode === "hybrid"
+                        ? "border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-semibold"
+                        : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                    )}
+                  >
+                    <div className="font-bold">Hybrid (Recommended)</div>
+                    <div className="text-[10px] text-slate-500 mt-0.5 leading-normal">
+                      Extracts editable text frames while preserving vector art
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPptxMode("image")}
+                    className={clsx(
+                      "p-3 rounded-xl border text-left text-xs transition-all cursor-pointer",
+                      pptxMode === "image"
+                        ? "border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-semibold"
+                        : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                    )}
+                  >
+                    <div className="font-bold">Image Slides</div>
+                    <div className="text-[10px] text-slate-500 mt-0.5 leading-normal">
+                      Renders rasterized slide pages for exact visual match
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Options for Password Protect */}
+            {(toolSlug === "protect" || toolSlug === "pdf-protect") && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    User Password (Required to Open):
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter document password"
+                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    Owner Password (Optional):
+                  </label>
+                  <input
+                    type="password"
+                    value={ownerPassword}
+                    onChange={(e) => setOwnerPassword(e.target.value)}
+                    placeholder="Permissions master password"
+                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Options for Password Unlock */}
+            {(toolSlug === "unlock" || toolSlug === "pdf-unlock") && (
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                  User Password (Required to Open):
+                  Enter Document Decryption Password:
                 </label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter document password"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+                  placeholder="Password to unlock"
+                  className="w-full max-w-sm px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
                 />
               </div>
+            )}
+
+            {/* Options for Compress */}
+            {(toolSlug === "compress" || toolSlug === "pdf-compress") && (
               <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                  Owner Password (Optional):
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+                  Compression Preset:
                 </label>
-                <input
-                  type="password"
-                  value={ownerPassword}
-                  onChange={(e) => setOwnerPassword(e.target.value)}
-                  placeholder="Master permissions password"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
-                />
+                <div className="grid grid-cols-3 gap-2.5">
+                  {[
+                    { id: "low", label: "Low", desc: "Max quality (200 DPI)" },
+                    { id: "balanced", label: "Balanced", desc: "Best balance (144 DPI)" },
+                    { id: "max", label: "Maximum", desc: "Smallest size (96 DPI)" },
+                  ].map((lvl) => (
+                    <button
+                      key={lvl.id}
+                      type="button"
+                      onClick={() => setCompressLevel(lvl.id as any)}
+                      className={clsx(
+                        "p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer",
+                        compressLevel === lvl.id
+                          ? "border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-semibold"
+                          : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                      )}
+                    >
+                      <div className="font-bold">{lvl.label}</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">{lvl.desc}</div>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Options for Password Unlock */}
-          {(toolSlug === "unlock" || toolSlug === "pdf-unlock") && (
-            <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                Enter Current Password:
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password to decrypt document"
-                className="w-full max-w-sm px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
-              />
-            </div>
-          )}
+            {/* Options for Watermark */}
+            {(toolSlug === "watermark" || toolSlug === "pdf-watermark") && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    Stamp Text:
+                  </label>
+                  <input
+                    type="text"
+                    value={watermarkText}
+                    onChange={(e) => setWatermarkText(e.target.value)}
+                    placeholder="e.g. CONFIDENTIAL, DRAFT"
+                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    Opacity: {Math.round(watermarkOpacity * 100)}%
+                  </label>
+                  <input
+                    type="range"
+                    min="0.05"
+                    max="0.8"
+                    step="0.05"
+                    value={watermarkOpacity}
+                    onChange={(e) => setWatermarkOpacity(parseFloat(e.target.value))}
+                    className="w-full mt-1.5"
+                  />
+                </div>
+              </div>
+            )}
 
-          {/* Options for Compress */}
-          {(toolSlug === "compress" || toolSlug === "pdf-compress") && (
-            <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
-                Compression Level:
-              </label>
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { id: "low", label: "Low", desc: "Highest visual quality (200 DPI)" },
-                  { id: "balanced", label: "Balanced", desc: "Best balance (144 DPI)" },
-                  { id: "max", label: "Maximum", desc: "Smallest size (96 DPI)" },
-                ].map((lvl) => (
-                  <button
-                    key={lvl.id}
-                    type="button"
-                    onClick={() => setCompressLevel(lvl.id as any)}
-                    className={clsx(
-                      "p-3 rounded-xl border text-left text-xs transition-all",
-                      compressLevel === lvl.id
-                        ? "border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100"
-                        : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
-                    )}
+            {/* Options for Page Numbers */}
+            {(toolSlug === "page-numbers" || toolSlug === "pdf-page-numbers") && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    Position:
+                  </label>
+                  <select
+                    value={pageNumberPos}
+                    onChange={(e) => setPageNumberPos(e.target.value as any)}
+                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
                   >
-                    <div className="font-bold">{lvl.label}</div>
-                    <div className="text-[10px] text-slate-400 mt-0.5">{lvl.desc}</div>
-                  </button>
-                ))}
+                    <option value="bottom-center">Bottom Center</option>
+                    <option value="bottom-right">Bottom Right</option>
+                    <option value="top-right">Top Right</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    Format:
+                  </label>
+                  <select
+                    value={pageNumberFmt}
+                    onChange={(e) => setPageNumberFmt(e.target.value as any)}
+                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
+                  >
+                    <option value="page-of-total">Page 1 of 10</option>
+                    <option value="number">1</option>
+                    <option value="page-n">Page 1</option>
+                  </select>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Options for Watermark */}
-          {(toolSlug === "watermark" || toolSlug === "pdf-watermark") && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Options for Split / Extract */}
+            {(toolSlug === "split" || toolSlug === "pdf-split" || toolSlug === "to-svg") && (
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                  Watermark Stamp Text:
+                  Custom Page Range (leave blank for all pages):
                 </label>
                 <input
                   type="text"
-                  value={watermarkText}
-                  onChange={(e) => setWatermarkText(e.target.value)}
-                  placeholder="e.g. CONFIDENTIAL, DRAFT"
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+                  value={splitRange}
+                  onChange={(e) => setSplitRange(e.target.value)}
+                  placeholder="e.g. 1-3, 5, 8-10"
+                  className="w-full max-w-sm px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
                 />
               </div>
-              <div>
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                  Opacity: {Math.round(watermarkOpacity * 100)}%
-                </label>
-                <input
-                  type="range"
-                  min="0.05"
-                  max="0.8"
-                  step="0.05"
-                  value={watermarkOpacity}
-                  onChange={(e) => setWatermarkOpacity(parseFloat(e.target.value))}
-                  className="w-full"
-                />
+            )}
+
+            {/* Action Bar */}
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="text-[11px] text-slate-400">
+                {isLocalEngine ? "Client-side browser processing" : "Local server high-fidelity pipeline"}
               </div>
+              <button
+                onClick={handleRunTool}
+                className="py-2.5 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>Execute Operation</span>
+              </button>
             </div>
-          )}
-
-          {/* Options for Split / Extract */}
-          {(toolSlug === "split" || toolSlug === "pdf-split" || toolSlug === "to-svg") && (
-            <div>
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                Custom Page Range (leave blank for all individual pages):
-              </label>
-              <input
-                type="text"
-                value={splitRange}
-                onChange={(e) => setSplitRange(e.target.value)}
-                placeholder="e.g. 1-3, 5, 8-10"
-                className="w-full max-w-sm px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
-              />
-            </div>
-          )}
-
-          {/* Action Button */}
-          <div className="pt-2">
-            <button
-              onClick={handleRunTool}
-              className="w-full py-3 px-6 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
-            >
-              <Play className="w-4 h-4 fill-current" />
-              <span>Start Processing {files.length} File(s)</span>
-            </button>
           </div>
         </div>
       )}
