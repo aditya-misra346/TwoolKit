@@ -15,6 +15,8 @@ import {
   Sparkles,
   CheckCircle2,
   Shield,
+  Sliders,
+  Cpu,
 } from "lucide-react";
 import clsx from "clsx";
 
@@ -75,7 +77,7 @@ export default function FileCompressorPage() {
             (p, s) => ctx.progress(p, s)
           );
           return {
-            outputs: [{ name: `${f.name}.zip`, blob: zipBlob, note: "Deflate compressed ZIP" }],
+            outputs: [{ name: `${f.name}.zip`, blob: zipBlob, note: "Deflate compressed archive" }],
           };
         },
       }))
@@ -85,79 +87,105 @@ export default function FileCompressorPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto animate-in fade-in duration-200">
+    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-150">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-          <Minimize2 className="w-7 h-7 text-purple-600 dark:text-purple-400" />
-          Advanced File Compressor
+        <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+          <Minimize2 className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+          Multi-Tier File Compressor
         </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
-          Intelligent multi-tier size reduction for PDFs, images, Office documents, and archives.
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+          Intelligent size reduction across PDF documents, high-res images, Office presentations, and archives.
         </p>
       </div>
 
-      <DropZone
-        onFilesSelected={(newFiles) => setFiles((prev) => [...prev, ...newFiles])}
-        selectedFiles={files}
-        onRemoveFile={(id) => setFiles((prev) => prev.filter((f) => f.id !== id))}
-        onClearAll={() => setFiles([])}
-        title="Drop files to compress"
-        description="Supports PDF, JPEG, PNG, WebP, Office files, and generic documents"
-        showToolRecommendations={false}
-      />
-
-      {files.length > 0 && (
-        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
-          <div>
-            <label className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider block mb-2">
-              Select Compression Profile
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {[
-                {
-                  id: "low",
-                  name: "Low Compression",
-                  desc: "Prioritizes crisp visual clarity. Downsamples to 200 DPI / 90% quality.",
-                },
-                {
-                  id: "balanced",
-                  name: "Balanced (Recommended)",
-                  desc: "Optimal balance between small file size and good visual fidelity (144 DPI).",
-                },
-                {
-                  id: "max",
-                  name: "Maximum Compression",
-                  desc: "Aggressive reduction for email attachments and strict web size caps (96 DPI).",
-                },
-              ].map((lvl) => (
-                <button
-                  key={lvl.id}
-                  type="button"
-                  onClick={() => setTier(lvl.id as any)}
-                  className={clsx(
-                    "p-4 rounded-2xl border text-left transition-all",
-                    tier === lvl.id
-                      ? "border-purple-500 bg-purple-50/60 dark:bg-purple-950/40 text-purple-950 dark:text-purple-100 font-bold shadow-xs"
-                      : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
-                  )}
-                >
-                  <div className="font-bold text-sm">{lvl.name}</div>
-                  <div className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                    {lvl.desc}
-                  </div>
-                </button>
-              ))}
-            </div>
+      {files.length === 0 ? (
+        <DropZone
+          onFilesSelected={(newFiles) => setFiles((prev) => [...prev, ...newFiles])}
+          selectedFiles={files}
+          onRemoveFile={(id) => setFiles((prev) => prev.filter((f) => f.id !== id))}
+          onClearAll={() => setFiles([])}
+          title="Drop PDF, image, or office files here to compress"
+          description="Supports PDF, JPEG, PNG, WebP, Word, PPTX, and generic documents"
+          showToolRecommendations={false}
+        />
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+          {/* Staged Files Column */}
+          <div className="lg:col-span-5 space-y-3">
+            <DropZone
+              onFilesSelected={(newFiles) => setFiles((prev) => [...prev, ...newFiles])}
+              selectedFiles={files}
+              onRemoveFile={(id) => setFiles((prev) => prev.filter((f) => f.id !== id))}
+              onClearAll={() => setFiles([])}
+              showToolRecommendations={false}
+            />
           </div>
 
-          <div className="pt-2">
-            <button
-              onClick={handleRunCompression}
-              className="w-full py-3 px-6 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm shadow-md shadow-purple-500/20 transition-all flex items-center justify-center gap-2"
-            >
-              <Play className="w-4 h-4 fill-current" />
-              <span>Compress {files.length} File(s)</span>
-            </button>
+          {/* Settings Column */}
+          <div className="lg:col-span-7 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs p-5 sm:p-6 space-y-5">
+            <div>
+              <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider block mb-2">
+                Compression Profile
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {[
+                  {
+                    id: "low",
+                    name: "Low",
+                    estimate: "~20-40% smaller",
+                    desc: "Preserves sharp detail. 200 DPI downsampling / 90% quality.",
+                  },
+                  {
+                    id: "balanced",
+                    name: "Balanced",
+                    estimate: "~50-70% smaller",
+                    desc: "Optimal balance between small size and visual fidelity (144 DPI).",
+                  },
+                  {
+                    id: "max",
+                    name: "Maximum",
+                    estimate: "~75-90% smaller",
+                    desc: "Aggressive reduction for email attachments and web caps (96 DPI).",
+                  },
+                ].map((lvl) => (
+                  <button
+                    key={lvl.id}
+                    type="button"
+                    onClick={() => setTier(lvl.id as any)}
+                    className={clsx(
+                      "p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between",
+                      tier === lvl.id
+                        ? "border-purple-500 bg-purple-50/60 dark:bg-purple-950/40 text-purple-950 dark:text-purple-100 font-bold shadow-2xs"
+                        : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                    )}
+                  >
+                    <div>
+                      <div className="font-bold text-xs">{lvl.name}</div>
+                      <div className="text-[10px] font-semibold text-purple-600 dark:text-purple-400 mt-0.5">
+                        {lvl.estimate}
+                      </div>
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-2 leading-relaxed">
+                      {lvl.desc}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
+                <Cpu className="w-3.5 h-3.5 text-purple-500" />
+                <span>PyMuPDF Stream Cleaning & Canvas Engine</span>
+              </div>
+              <button
+                onClick={handleRunCompression}
+                className="py-2.5 px-6 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>Compress {files.length} File(s)</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
