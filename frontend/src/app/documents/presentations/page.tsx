@@ -276,6 +276,15 @@ export default function PresentationStudioPage() {
           </div>
         </div>
       )}
+      {/* Consent Modal for Server Processing */}
+      <ConsentModal
+        isOpen={showConsentModal}
+        onClose={() => setShowConsentModal(false)}
+        onConfirm={() => {
+          setShowConsentModal(false);
+          handleRunPresentationTask();
+        }}
+      />
     </div>
   );
 }
