@@ -34,9 +34,12 @@ import Link from "next/link";
 
 type Tab = "all" | "duplicates" | "large" | "security";
 
-export default function ScannerPage() {
+function ScannerContent() {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab") as Tab | null;
+  const initialTab: Tab = (tabParam === "duplicates" || tabParam === "large" || tabParam === "security") ? tabParam : "all";
   const { currentScan, isScanning, scanProgress, currentScanStage, setScanResult, updateScanProgress, moveToTrash } = useScanStore();
-  const [activeTab, setActiveTab] = useState<Tab>("all");
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"size-desc" | "size-asc" | "date-desc" | "date-asc" | "name">("size-desc");
@@ -602,5 +605,13 @@ export default function ScannerPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ScannerPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Loading Scanner...</div>}>
+      <ScannerContent />
+    </Suspense>
   );
 }
