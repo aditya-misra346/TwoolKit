@@ -133,8 +133,8 @@ export function TaskDrawer() {
             batchOrder.map((batchId) => {
               const batch = batches[batchId];
               if (!batch) return null;
-              const summary = batchSummary({ batches, tasks, order, batchOrder } as any, batchId);
               const bTasks = batchTasks({ tasks, order } as any, batchId);
+              const summary = batchSummary(bTasks);
               const isExpanded = expandedBatches[batchId] ?? true;
 
               return (
