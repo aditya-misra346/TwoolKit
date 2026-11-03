@@ -7,6 +7,8 @@ import { DropZone, type StagedFile } from "@/components/DropZone";
 import { useQueue } from "@/stores/tasks";
 import { runServerJob } from "@/lib/api";
 import { PageOrganizer } from "@/components/pdf/PageOrganizer";
+import { ConsentModal } from "@/components/ConsentModal";
+import { useSettings } from "@/stores/settings";
 import {
   mergePdfs,
   splitPdf,
@@ -27,6 +29,8 @@ import {
   repairPdfClient,
   ocrPdf,
   organizePdfPages,
+  protectPdfClient,
+  unlockPdfClient,
   type PageAction,
 } from "@/lib/pdfClient";
 import { formatBytes } from "@/lib/fileTypes";
@@ -59,6 +63,9 @@ import {
   Code,
   Wrench,
   PenLine,
+  Eye,
+  EyeOff,
+  ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
 import clsx from "clsx";
@@ -86,7 +93,16 @@ export default function DedicatedPdfToolPage({ params }: Props) {
 
   const [files, setFiles] = useState<StagedFile[]>([]);
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [ownerPassword, setOwnerPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [allowPrinting, setAllowPrinting] = useState(true);
+  const [allowCopying, setAllowCopying] = useState(true);
+  const [allowModifying, setAllowModifying] = useState(false);
+  const [allowAnnotating, setAllowAnnotating] = useState(true);
+  const [protectEngine, setProtectEngine] = useState<"local" | "server">("local");
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [watermarkText, setWatermarkText] = useState("CONFIDENTIAL");
   const [watermarkOpacity, setWatermarkOpacity] = useState(0.2);
   const [watermarkColor, setWatermarkColor] = useState<"red" | "gray" | "blue">("red");
