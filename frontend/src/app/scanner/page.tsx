@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useScanStore } from "@/stores/scanStore";
 import { DropZone, type StagedFile } from "@/components/DropZone";
 import { analyzeFile } from "@/lib/scanner";
