@@ -1,7 +1,5 @@
 /**
- * Central registry of every tool in Vellum. Navigation, the command palette,
- * dashboard quick actions and favourites are all generated from this list,
- * so a tool exists in the UI only if it is registered here.
+ * Central registry of every tool and navigation structure in Vellum.
  */
 import type { LucideIcon } from "lucide-react";
 import {
@@ -42,6 +40,7 @@ import {
   Archive,
   FileDown,
   Type,
+  Video,
 } from "lucide-react";
 
 export type Engine = "local" | "server" | "hybrid";
@@ -56,7 +55,6 @@ export interface Tool {
   group: "core" | "pdf" | "pdf-convert" | "convert" | "image" | "manage";
   engine: Engine;
   keywords: string;
-  /** backend op(s) needed; used to show "Unavailable" when the engine is missing */
   serverOps?: string[];
 }
 
@@ -65,28 +63,74 @@ export interface NavItem {
   label: string;
   href: string;
   icon: LucideIcon;
+  badge?: string;
 }
 
-export const NAV: NavItem[] = [
-  { id: "dashboard", label: "Dashboard", href: "/", icon: LayoutDashboard },
-  { id: "scanner", label: "File Scanner", href: "/scanner", icon: ScanSearch },
-  { id: "storage", label: "Storage Manager", href: "/storage", icon: HardDrive },
-  { id: "pdf", label: "PDF Tools", href: "/pdf", icon: FileText },
-  { id: "documents", label: "Document Converter", href: "/documents", icon: FileType2 },
-  { id: "images", label: "Image Converter", href: "/images", icon: ImageIcon },
-  { id: "compress", label: "File Compressor", href: "/compress", icon: Minimize2 },
-  { id: "organizer", label: "File Organizer", href: "/organizer", icon: FolderTree },
-  { id: "assistant", label: "File Assistant", href: "/assistant", icon: Sparkles },
-  { id: "recent", label: "Recent Files", href: "/recent", icon: History },
-  { id: "settings", label: "Settings", href: "/settings", icon: Settings },
+export interface NavSection {
+  id: string;
+  title: string;
+  items: NavItem[];
+}
+
+export const NAV_SECTIONS: NavSection[] = [
+  {
+    id: "workspace",
+    title: "Workspace",
+    items: [
+      { id: "dashboard", label: "Dashboard", href: "/", icon: LayoutDashboard },
+      { id: "recent", label: "Recent Files", href: "/recent", icon: History },
+    ],
+  },
+  {
+    id: "file-management",
+    title: "File Management",
+    items: [
+      { id: "scanner", label: "File Scanner", href: "/scanner", icon: ScanSearch },
+      { id: "storage", label: "Storage Manager", href: "/storage", icon: HardDrive },
+      { id: "organizer", label: "File Organizer", href: "/organizer", icon: FolderTree },
+      { id: "duplicates", label: "Duplicate Finder", href: "/scanner?tab=duplicates", icon: Copy },
+    ],
+  },
+  {
+    id: "pdf-workspace",
+    title: "PDF Workspace",
+    items: [
+      { id: "pdf", label: "All PDF Tools", href: "/pdf", icon: FileText },
+      { id: "pdf-merge", label: "Merge PDFs", href: "/pdf/merge", icon: Combine },
+      { id: "pdf-split", label: "Split PDF", href: "/pdf/split", icon: Scissors },
+      { id: "pdf-compress", label: "Compress PDF", href: "/pdf/compress", icon: Minimize2 },
+      { id: "pdf-to-word", label: "PDF to Word", href: "/pdf/to-word", icon: FileType2 },
+    ],
+  },
+  {
+    id: "conversion",
+    title: "Conversion",
+    items: [
+      { id: "documents", label: "Document Converter", href: "/documents", icon: FileType2 },
+      { id: "presentations", label: "Presentation Studio", href: "/documents/presentations", icon: Presentation },
+      { id: "images", label: "Image Studio", href: "/images", icon: ImageIcon },
+    ],
+  },
+  {
+    id: "system",
+    title: "System & AI",
+    items: [
+      { id: "compress", label: "File Compressor", href: "/compress", icon: Minimize2 },
+      { id: "assistant", label: "File Assistant", href: "/assistant", icon: Sparkles },
+      { id: "settings", label: "Settings", href: "/settings", icon: Settings },
+    ],
+  },
 ];
 
-/** Bottom bar on phones (the rest lives in the drawer). */
-export const MOBILE_NAV = ["dashboard", "scanner", "pdf", "images"];
+// Flat NAV list for backwards compatibility
+export const NAV: NavItem[] = NAV_SECTIONS.flatMap((s) => s.items);
+
+/** Bottom bar on phones */
+export const MOBILE_NAV = ["dashboard", "scanner", "pdf", "images", "storage"];
 
 export const TOOLS: Tool[] = [
   // ---- core
-  { id: "scanner", name: "Scan Files", description: "Analyse files & folders: types, integrity, risks.", href: "/scanner", icon: ScanSearch, group: "core", engine: "local", keywords: "scan analyze analyse folder integrity security signature mime" },
+  { id: "scanner", name: "Scan Files", description: "Analyse files & folders: types, integrity, risks.", href: "/scanner", icon: ScanSearch, group: "core", engine: "local", keywords: "scan analyze folder integrity security signature mime" },
   { id: "storage", name: "Analyze Storage", description: "See what takes space and what you can safely clean up.", href: "/storage", icon: HardDrive, group: "core", engine: "local", keywords: "storage space cleanup large old empty folders recycle" },
   { id: "duplicates", name: "Find Duplicates", description: "Exact (SHA-256) and visually similar duplicates.", href: "/scanner?tab=duplicates", icon: Copy, group: "core", engine: "local", keywords: "duplicate copies hash perceptual similar images" },
   { id: "compress", name: "Compress Files", description: "PDF, images, Office files and ZIP archives.", href: "/compress", icon: Minimize2, group: "core", engine: "hybrid", keywords: "compress reduce size shrink optimize zip" },
@@ -94,7 +138,7 @@ export const TOOLS: Tool[] = [
   { id: "assistant", name: "File Assistant", description: "Summaries, key facts and format advice for your files.", href: "/assistant", icon: Sparkles, group: "manage", engine: "hybrid", keywords: "ai assistant summarize summary extract explain gemini" },
   { id: "archive", name: "ZIP Archives", description: "Create or safely extract ZIP archives in the browser.", href: "/organizer?tab=archive", icon: Archive, group: "manage", engine: "local", keywords: "zip unzip archive extract create" },
 
-  // ---- PDF management (in-browser via pdf-lib / pdf.js unless noted)
+  // ---- PDF management
   { id: "pdf-merge", name: "Merge PDFs", description: "Combine PDFs into one document, in any order.", href: "/pdf/merge", icon: Combine, group: "pdf", engine: "local", keywords: "merge combine join pdf" },
   { id: "pdf-split", name: "Split PDF", description: "Split into single pages or custom ranges.", href: "/pdf/split", icon: Scissors, group: "pdf", engine: "local", keywords: "split separate pages ranges pdf" },
   { id: "pdf-organize", name: "Organize Pages", description: "Reorder, rotate, delete, insert blank or add pages.", href: "/pdf/organize", icon: LayoutGrid, group: "pdf", engine: "local", keywords: "reorder drag rotate delete insert blank add pages organize" },
@@ -140,11 +184,10 @@ export const toolById = (id: string) => TOOLS.find((t) => t.id === id);
 export const QUICK_ACTIONS = [
   "scanner",
   "storage",
-  "pdf-to-word",
+  "pdf-to-pptx",
   "pptx-convert",
   "image-convert",
+  "pdf-compress",
   "compress",
   "duplicates",
-  "pdf-merge",
-  "pdf-split",
 ];
