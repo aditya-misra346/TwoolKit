@@ -27,9 +27,6 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
     );
   });
 
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [query]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -83,7 +80,10 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
             type="text"
             placeholder="Type a tool name, format, or action (e.g. 'merge', 'pptx to pdf', 'compress')..."
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSelectedIndex(0);
+            }}
             autoFocus
             className="flex-1 bg-transparent text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden"
           />
