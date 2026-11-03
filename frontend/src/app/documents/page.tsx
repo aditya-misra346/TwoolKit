@@ -50,9 +50,12 @@ const FORMAT_MATRIX: Record<string, string[]> = {
   xml: ["json"],
 };
 
-export default function DocumentConverterPage() {
+function DocumentConverterContent() {
+  const searchParams = useSearchParams();
+  const family = searchParams.get("family");
+  const initialTarget = searchParams.get("target") || (family === "spreadsheet" ? "xlsx" : "pdf");
   const [files, setFiles] = useState<StagedFile[]>([]);
-  const [targetFormat, setTargetFormat] = useState<string>("pdf");
+  const [targetFormat, setTargetFormat] = useState<string>(initialTarget);
   const [showConsentModal, setShowConsentModal] = useState(false);
   const { enqueue, setDrawer } = useQueue();
   const { cloudConsent } = useSettings();
@@ -208,5 +211,13 @@ export default function DocumentConverterPage() {
         }}
       />
     </div>
+  );
+}
+
+export default function DocumentConverterPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Loading Document Converter...</div>}>
+      <DocumentConverterContent />
+    </Suspense>
   );
 }
