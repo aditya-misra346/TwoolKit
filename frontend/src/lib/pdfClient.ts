@@ -714,9 +714,23 @@ export async function extractPdfToDocx(
   onProgress?: (p: number, stage: string) => void
 ): Promise<Blob> {
   const { Document, Paragraph, TextRun, HeadingLevel, Packer } = await import("docx");
-  const { text } = await extractPdfText(pdfBlob, undefined, (p, s) => onProgress?.(p * 0.7, s));
+  let { text } = await extractPdfText(pdfBlob, undefined, (p, s) => onProgress?.(p * 0.4, s));
 
-  onProgress?.(0.75, "Constructing Word document structure");
+  // If text layer is empty or nearly empty (scanned image PDF), run OCR recognition
+  if (!text || text.trim().length < 15) {
+    onProgress?.(0.45, "Scanned PDF detected · Running OCR text recognition");
+    try {
+      const ocrRes = await ocrPdf(pdfBlob, "eng", (p, s) => onProgress?.(0.45 + p * 0.35, s));
+      const ocrText = await ocrRes.blob.text();
+      if (ocrText && ocrText.trim().length > 0) {
+        text = ocrText;
+      }
+    } catch {
+      // Continue with available text if OCR fails
+    }
+  }
+
+  onProgress?.(0.85, "Constructing Word document structure");
   const pages = text.split(/--- PAGE \d+ ---/g).map((s) => s.trim()).filter(Boolean);
 
   const sections = pages.map((pageText, pageIdx) => {
