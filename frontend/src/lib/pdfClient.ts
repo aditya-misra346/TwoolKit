@@ -608,7 +608,7 @@ export async function renderPdfToImages(
     const ctx = canvas.getContext("2d");
 
     if (ctx) {
-      await page.render({ canvasContext: ctx, viewport }).promise;
+      await (page.render as any)({ canvas, canvasContext: ctx, viewport }).promise;
       const blob = await new Promise<Blob>((res, rej) => {
         canvas.toBlob((b) => (b ? res(b) : rej(new Error("Canvas export failed"))), mime, 0.92);
       });
