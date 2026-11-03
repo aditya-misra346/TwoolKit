@@ -6,15 +6,28 @@ import { TOOLS } from "@/lib/tools";
 import { DropZone, type StagedFile } from "@/components/DropZone";
 import { useQueue } from "@/stores/tasks";
 import { runServerJob } from "@/lib/api";
+import { PageOrganizer } from "@/components/pdf/PageOrganizer";
 import {
   mergePdfs,
   splitPdf,
   rotatePdf,
+  deletePdfPages,
   addPageNumbers,
   addWatermark,
   addHeaderFooter,
   cropPdfMargins,
   imagesToPdf,
+  renderPdfToImages,
+  extractPdfText,
+  extractPdfToHtml,
+  extractPdfToDocx,
+  extractPdfToXlsx,
+  extractPdfToPptx,
+  compressPdfClient,
+  repairPdfClient,
+  ocrPdf,
+  organizePdfPages,
+  type PageAction,
 } from "@/lib/pdfClient";
 import { formatBytes } from "@/lib/fileTypes";
 import {
@@ -38,6 +51,14 @@ import {
   Cpu,
   Layers,
   Settings,
+  Scissors,
+  Trash2,
+  PanelTop,
+  FileImage,
+  Type,
+  Code,
+  Wrench,
+  PenLine,
 } from "lucide-react";
 import Link from "next/link";
 import clsx from "clsx";
@@ -47,13 +68,20 @@ interface Props {
 }
 
 export default function DedicatedPdfToolPage({ params }: Props) {
-  const { tool: toolSlug } = use(params);
+  const { tool: rawToolSlug } = use(params);
   const router = useRouter();
   const { enqueue, setDrawer } = useQueue();
 
+  // Normalize tool slug (strip leading "pdf-" if present for clean routing matching)
+  const toolSlug = rawToolSlug.replace(/^pdf-/, "");
+
   // Find tool definition
   const tool = TOOLS.find(
-    (t) => t.id === toolSlug || t.id === `pdf-${toolSlug}` || t.href === `/pdf/${toolSlug}`
+    (t) =>
+      t.id === toolSlug ||
+      t.id === `pdf-${toolSlug}` ||
+      t.href === `/pdf/${toolSlug}` ||
+      t.href === `/pdf/pdf-${toolSlug}`
   );
 
   const [files, setFiles] = useState<StagedFile[]>([]);
@@ -61,19 +89,98 @@ export default function DedicatedPdfToolPage({ params }: Props) {
   const [ownerPassword, setOwnerPassword] = useState("");
   const [watermarkText, setWatermarkText] = useState("CONFIDENTIAL");
   const [watermarkOpacity, setWatermarkOpacity] = useState(0.2);
+  const [watermarkColor, setWatermarkColor] = useState<"red" | "gray" | "blue">("red");
   const [pageNumberPos, setPageNumberPos] = useState<"bottom-center" | "bottom-right" | "top-right">("bottom-center");
   const [pageNumberFmt, setPageNumberFmt] = useState<"number" | "page-of-total" | "page-n">("page-of-total");
+  const [headerText, setHeaderText] = useState("");
+  const [footerText, setFooterText] = useState("");
   const [splitRange, setSplitRange] = useState("");
+  const [deletePagesSpec, setDeletePagesSpec] = useState("");
+  const [rotateAngle, setRotateAngle] = useState<number>(90);
+  const [imageFormat, setImageFormat] = useState<"png" | "jpeg" | "webp">("png");
+  const [imageDpi, setImageDpi] = useState<number>(2.0); // scale 2.0 = ~144-150 DPI
+  const [ocrLang, setOcrLang] = useState("eng");
+  const [cropMargins, setCropMargins] = useState({ top: 36, right: 36, bottom: 36, left: 36 });
   const [pptxMode, setPptxMode] = useState<"hybrid" | "image">("hybrid");
   const [compressLevel, setCompressLevel] = useState<"low" | "balanced" | "max">("balanced");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const isImagesToPdf = toolSlug === "images-to-pdf";
   const acceptedExt = isImagesToPdf ? ".jpg,.jpeg,.png,.webp,.bmp" : ".pdf";
+  const isOrganize = toolSlug === "organize" || toolSlug === "reorder";
+
+  // Dedicated handler for Organize Pages applied from the visual grid
+  const handleApplyOrganize = async (actions: PageAction[]) => {
+    if (files.length === 0) return;
+    setIsProcessing(true);
+    const targetFile = files[0].file;
+
+    enqueue(
+      { title: "Organize PDF Pages", tool: "pdf-organize", kind: "pdf", statKind: "pdf" },
+      [
+        {
+          label: files[0].name,
+          inputSize: files[0].size,
+          engine: "local",
+          run: async (ctx) => {
+            ctx.progress(0.2, "Reorganizing document structure");
+            const organizedBlob = await organizePdfPages(targetFile, actions);
+            ctx.progress(1.0, "Document ready");
+            const outName = files[0].name.replace(/\.pdf$/i, "-organized.pdf");
+            return {
+              outputs: [
+                {
+                  name: outName,
+                  blob: organizedBlob,
+                  note: `${actions.length} page(s) organized`,
+                },
+              ],
+            };
+          },
+        },
+      ]
+    );
+    setIsProcessing(false);
+    setDrawer(true);
+  };
 
   const handleRunTool = async () => {
     if (files.length === 0) return;
 
-    if (toolSlug === "merge" || toolSlug === "pdf-merge") {
+    // 1. Organize Pages
+    if (isOrganize) {
+      if (files.length > 0) {
+        // If run button clicked without customized grid, preserve full document with current settings
+        enqueue(
+          { title: "Organize PDF Pages", tool: "pdf-organize", kind: "pdf", statKind: "pdf" },
+          files.map((f) => ({
+            label: f.name,
+            inputSize: f.size,
+            engine: "local",
+            run: async (ctx) => {
+              ctx.progress(0.2, "Reading page layout");
+              const info = await f.file.arrayBuffer();
+              const actions: PageAction[] = [];
+              // Default to sequential identity mapping
+              const { getPdfInfo } = await import("@/lib/pdfClient");
+              const details = await getPdfInfo(f.file);
+              for (let i = 0; i < details.pageCount; i++) {
+                actions.push({ sourceIndex: i });
+              }
+              const organizedBlob = await organizePdfPages(f.file, actions);
+              return {
+                outputs: [{ name: f.name.replace(/\.pdf$/i, "-organized.pdf"), blob: organizedBlob }],
+              };
+            },
+          }))
+        );
+        setDrawer(true);
+      }
+      return;
+    }
+
+    // 2. Merge PDFs
+    if (toolSlug === "merge") {
       enqueue(
         { title: "Merge PDFs", tool: "pdf-merge", kind: "pdf", statKind: "pdf" },
         [
@@ -96,14 +203,16 @@ export default function DedicatedPdfToolPage({ params }: Props) {
       return;
     }
 
-    if (toolSlug === "split" || toolSlug === "pdf-split") {
+    // 3. Split PDF
+    if (toolSlug === "split") {
       enqueue(
         { title: "Split PDF", tool: "pdf-split", kind: "pdf", statKind: "pdf" },
         files.map((f) => ({
           label: f.name,
           inputSize: f.size,
           engine: "local",
-          run: async () => {
+          run: async (ctx) => {
+            ctx.progress(0.3, "Extracting pages");
             const splitted = await splitPdf(f.file, splitRange);
             return { outputs: splitted };
           },
@@ -113,16 +222,66 @@ export default function DedicatedPdfToolPage({ params }: Props) {
       return;
     }
 
-    if (toolSlug === "rotate" || toolSlug === "pdf-rotate") {
+    // 4. Extract Pages
+    if (toolSlug === "extract") {
+      enqueue(
+        { title: "Extract Pages", tool: "pdf-extract", kind: "pdf", statKind: "pdf" },
+        files.map((f) => ({
+          label: f.name,
+          inputSize: f.size,
+          engine: "local",
+          run: async (ctx) => {
+            ctx.progress(0.3, "Extracting selected pages");
+            const extracted = await splitPdf(f.file, splitRange || "1");
+            return { outputs: extracted };
+          },
+        }))
+      );
+      setDrawer(true);
+      return;
+    }
+
+    // 5. Delete Pages
+    if (toolSlug === "delete") {
+      enqueue(
+        { title: "Delete Pages", tool: "pdf-delete", kind: "pdf", statKind: "pdf" },
+        files.map((f) => ({
+          label: f.name,
+          inputSize: f.size,
+          engine: "local",
+          run: async (ctx) => {
+            ctx.progress(0.3, "Removing specified pages");
+            // Parse comma-separated list of numbers
+            const parts = deletePagesSpec.split(",").map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
+            const deletedBlob = await deletePdfPages(f.file, parts);
+            return {
+              outputs: [
+                {
+                  name: f.name.replace(/\.pdf$/i, "-pages-removed.pdf"),
+                  blob: deletedBlob,
+                  note: `${parts.length} page(s) removed`,
+                },
+              ],
+            };
+          },
+        }))
+      );
+      setDrawer(true);
+      return;
+    }
+
+    // 6. Rotate PDF
+    if (toolSlug === "rotate") {
       enqueue(
         { title: "Rotate PDF", tool: "pdf-rotate", kind: "pdf", statKind: "pdf" },
         files.map((f) => ({
           label: f.name,
           inputSize: f.size,
           engine: "local",
-          run: async () => {
-            const rotated = await rotatePdf(f.file, 90);
-            return { outputs: [{ name: f.name.replace(".pdf", "-rotated.pdf"), blob: rotated }] };
+          run: async (ctx) => {
+            ctx.progress(0.3, `Rotating ${rotateAngle}°`);
+            const rotated = await rotatePdf(f.file, rotateAngle);
+            return { outputs: [{ name: f.name.replace(/\.pdf$/i, "-rotated.pdf"), blob: rotated }] };
           },
         }))
       );
@@ -130,19 +289,21 @@ export default function DedicatedPdfToolPage({ params }: Props) {
       return;
     }
 
-    if (toolSlug === "page-numbers" || toolSlug === "pdf-page-numbers") {
+    // 7. Page Numbers
+    if (toolSlug === "page-numbers") {
       enqueue(
         { title: "Add Page Numbers", tool: "pdf-page-numbers", kind: "pdf", statKind: "pdf" },
         files.map((f) => ({
           label: f.name,
           inputSize: f.size,
           engine: "local",
-          run: async () => {
+          run: async (ctx) => {
+            ctx.progress(0.3, "Applying pagination stamps");
             const numbered = await addPageNumbers(f.file, {
               position: pageNumberPos,
               format: pageNumberFmt,
             });
-            return { outputs: [{ name: f.name.replace(".pdf", "-numbered.pdf"), blob: numbered }] };
+            return { outputs: [{ name: f.name.replace(/\.pdf$/i, "-numbered.pdf"), blob: numbered }] };
           },
         }))
       );
@@ -150,19 +311,28 @@ export default function DedicatedPdfToolPage({ params }: Props) {
       return;
     }
 
-    if (toolSlug === "watermark" || toolSlug === "pdf-watermark") {
+    // 8. Watermark PDF
+    if (toolSlug === "watermark") {
       enqueue(
         { title: "Watermark PDF", tool: "pdf-watermark", kind: "pdf", statKind: "pdf" },
         files.map((f) => ({
           label: f.name,
           inputSize: f.size,
           engine: "local",
-          run: async () => {
+          run: async (ctx) => {
+            ctx.progress(0.3, "Stamping watermark layer");
+            const colorRgb =
+              watermarkColor === "blue"
+                ? { r: 0.1, g: 0.4, b: 0.9 }
+                : watermarkColor === "gray"
+                ? { r: 0.4, g: 0.4, b: 0.4 }
+                : { r: 0.85, g: 0.15, b: 0.15 };
             const wm = await addWatermark(f.file, {
-              text: watermarkText,
+              text: watermarkText || "CONFIDENTIAL",
               opacity: watermarkOpacity,
+              color: colorRgb,
             });
-            return { outputs: [{ name: f.name.replace(".pdf", "-watermarked.pdf"), blob: wm }] };
+            return { outputs: [{ name: f.name.replace(/\.pdf$/i, "-watermarked.pdf"), blob: wm }] };
           },
         }))
       );
@@ -170,6 +340,45 @@ export default function DedicatedPdfToolPage({ params }: Props) {
       return;
     }
 
+    // 9. Header & Footer
+    if (toolSlug === "header-footer") {
+      enqueue(
+        { title: "Add Header & Footer", tool: "pdf-header-footer", kind: "pdf", statKind: "pdf" },
+        files.map((f) => ({
+          label: f.name,
+          inputSize: f.size,
+          engine: "local",
+          run: async (ctx) => {
+            ctx.progress(0.3, "Adding running headers and footers");
+            const res = await addHeaderFooter(f.file, headerText, footerText);
+            return { outputs: [{ name: f.name.replace(/\.pdf$/i, "-headers.pdf"), blob: res }] };
+          },
+        }))
+      );
+      setDrawer(true);
+      return;
+    }
+
+    // 10. Crop PDF
+    if (toolSlug === "crop") {
+      enqueue(
+        { title: "Crop PDF Margins", tool: "pdf-crop", kind: "pdf", statKind: "pdf" },
+        files.map((f) => ({
+          label: f.name,
+          inputSize: f.size,
+          engine: "local",
+          run: async (ctx) => {
+            ctx.progress(0.4, "Applying crop margins");
+            const cropped = await cropPdfMargins(f.file, cropMargins);
+            return { outputs: [{ name: f.name.replace(/\.pdf$/i, "-cropped.pdf"), blob: cropped }] };
+          },
+        }))
+      );
+      setDrawer(true);
+      return;
+    }
+
+    // 11. Images to PDF
     if (isImagesToPdf) {
       enqueue(
         { title: "Images to PDF", tool: "images-to-pdf", kind: "pdf", statKind: "pdf" },
@@ -192,40 +401,158 @@ export default function DedicatedPdfToolPage({ params }: Props) {
       return;
     }
 
-    // Server-side powered operations
+    // 12. PDF to Images (PNG, JPEG, WebP)
+    if (toolSlug === "to-image") {
+      enqueue(
+        { title: "PDF to Images", tool: "pdf-to-image", kind: "pdf", statKind: "convert" },
+        files.map((f) => ({
+          label: f.name,
+          inputSize: f.size,
+          engine: "local",
+          run: async (ctx) => {
+            const images = await renderPdfToImages(
+              f.file,
+              imageFormat,
+              imageDpi,
+              splitRange,
+              (p, s) => ctx.progress(p, s)
+            );
+            return { outputs: images };
+          },
+        }))
+      );
+      setDrawer(true);
+      return;
+    }
+
+    // 13. PDF to Text
+    if (toolSlug === "to-text") {
+      enqueue(
+        { title: "PDF to Text", tool: "pdf-to-text", kind: "pdf", statKind: "convert" },
+        files.map((f) => ({
+          label: f.name,
+          inputSize: f.size,
+          engine: "local",
+          run: async (ctx) => {
+            const res = await extractPdfText(f.file, splitRange, (p, s) => ctx.progress(p, s));
+            const outName = f.name.replace(/\.pdf$/i, ".txt");
+            return { outputs: [{ name: outName, blob: res.blob }] };
+          },
+        }))
+      );
+      setDrawer(true);
+      return;
+    }
+
+    // 14. OCR PDF
+    if (toolSlug === "ocr") {
+      enqueue(
+        { title: "OCR PDF", tool: "pdf-ocr", kind: "pdf", statKind: "ocr" },
+        files.map((f) => ({
+          label: f.name,
+          inputSize: f.size,
+          engine: "local",
+          run: async (ctx) => {
+            const res = await ocrPdf(f.file, ocrLang, (p, s) => ctx.progress(p, s));
+            const outName = f.name.replace(/\.pdf$/i, "-ocr.txt");
+            return { outputs: [{ name: outName, blob: res.blob }] };
+          },
+        }))
+      );
+      setDrawer(true);
+      return;
+    }
+
+    // 15. Annotate / Sign
+    if (toolSlug === "edit" || toolSlug === "sign") {
+      enqueue(
+        { title: "Annotate & Sign", tool: "pdf-edit", kind: "pdf", statKind: "pdf" },
+        files.map((f) => ({
+          label: f.name,
+          inputSize: f.size,
+          engine: "local",
+          run: async (ctx) => {
+            ctx.progress(0.3, "Applying annotation stamp");
+            const wm = await addWatermark(f.file, {
+              text: watermarkText || "APPROVED & SIGNED",
+              opacity: 0.35,
+              rotation: 0,
+              fontSize: 32,
+              color: { r: 0.1, g: 0.3, b: 0.8 },
+            });
+            return { outputs: [{ name: f.name.replace(/\.pdf$/i, "-signed.pdf"), blob: wm }] };
+          },
+        }))
+      );
+      setDrawer(true);
+      return;
+    }
+
+    // -------------------------------------------------------------------------
+    // HYBRID & SERVER OPERATIONS (With Instant Automatic Fallback!)
+    // -------------------------------------------------------------------------
     let serverOp = "pdf.compress";
     let options: Record<string, any> = {};
+    let fallbackFn: ((f: File, ctx: any) => Promise<{ name: string; blob: Blob }[]>) | null = null;
 
-    if (toolSlug === "to-word" || toolSlug === "pdf-to-word") {
+    if (toolSlug === "to-word") {
       serverOp = "pdf.to_docx";
       options = { password: password || undefined };
-    } else if (toolSlug === "to-pptx" || toolSlug === "pdf-to-pptx") {
+      fallbackFn = async (file, ctx) => {
+        ctx.progress(0.4, "Using high-compatibility client Word engine");
+        const docxBlob = await extractPdfToDocx(file, (p, s) => ctx.progress(p, s));
+        return [{ name: file.name.replace(/\.pdf$/i, ".docx"), blob: docxBlob }];
+      };
+    } else if (toolSlug === "to-pptx") {
       serverOp = "pdf.to_pptx";
       options = { mode: pptxMode, password: password || undefined };
-    } else if (toolSlug === "to-excel" || toolSlug === "pdf-to-excel") {
+      fallbackFn = async (file, ctx) => {
+        ctx.progress(0.4, "Using high-compatibility client slide engine");
+        const pptxBlob = await extractPdfToPptx(file, pptxMode, (p, s) => ctx.progress(p, s));
+        return [{ name: file.name.replace(/\.pdf$/i, ".pptx"), blob: pptxBlob }];
+      };
+    } else if (toolSlug === "to-excel") {
       serverOp = "pdf.to_xlsx";
       options = { password: password || undefined };
-    } else if (toolSlug === "compress" || toolSlug === "pdf-compress") {
+      fallbackFn = async (file, ctx) => {
+        ctx.progress(0.4, "Using high-compatibility client spreadsheet engine");
+        const xlsxBlob = await extractPdfToXlsx(file, (p, s) => ctx.progress(p, s));
+        return [{ name: file.name.replace(/\.pdf$/i, ".xlsx"), blob: xlsxBlob }];
+      };
+    } else if (toolSlug === "to-html") {
+      serverOp = "pdf.to_html";
+      fallbackFn = async (file, ctx) => {
+        ctx.progress(0.4, "Generating standalone web document");
+        const htmlBlob = await extractPdfToHtml(file, (p, s) => ctx.progress(p, s));
+        return [{ name: file.name.replace(/\.pdf$/i, ".html"), blob: htmlBlob }];
+      };
+    } else if (toolSlug === "compress") {
       serverOp = "pdf.compress";
       options = { level: compressLevel, password: password || undefined };
-    } else if (toolSlug === "protect" || toolSlug === "pdf-protect") {
+      fallbackFn = async (file, ctx) => {
+        ctx.progress(0.4, "Running client object-stream compression");
+        const compBlob = await compressPdfClient(file, compressLevel, (p, s) => ctx.progress(p, s));
+        return [{ name: file.name.replace(/\.pdf$/i, "-compressed.pdf"), blob: compBlob }];
+      };
+    } else if (toolSlug === "repair") {
+      serverOp = "pdf.repair";
+      fallbackFn = async (file, ctx) => {
+        ctx.progress(0.4, "Rebuilding cross-reference tables");
+        const repBlob = await repairPdfClient(file);
+        return [{ name: file.name.replace(/\.pdf$/i, "-repaired.pdf"), blob: repBlob }];
+      };
+    } else if (toolSlug === "protect") {
       serverOp = "pdf.protect";
       options = { userPassword: password, ownerPassword: ownerPassword || password };
-    } else if (toolSlug === "unlock" || toolSlug === "pdf-unlock") {
+    } else if (toolSlug === "unlock") {
       serverOp = "pdf.unlock";
       options = { password };
-    } else if (toolSlug === "repair" || toolSlug === "pdf-repair") {
-      serverOp = "pdf.repair";
-    } else if (toolSlug === "extract-images" || toolSlug === "pdf-extract-images") {
+    } else if (toolSlug === "extract-images") {
       serverOp = "pdf.extract_images";
       options = { password: password || undefined };
-    } else if (toolSlug === "to-svg" || toolSlug === "pdf-to-svg") {
+    } else if (toolSlug === "to-svg") {
       serverOp = "pdf.to_svg";
       options = { pages: splitRange || undefined, password: password || undefined };
-    } else if (toolSlug === "to-html" || toolSlug === "pdf-to-html") {
-      serverOp = "pdf.to_html";
-    } else if (toolSlug === "to-text" || toolSlug === "pdf-to-text") {
-      serverOp = "pdf.to_txt";
     }
 
     enqueue(
@@ -238,19 +565,56 @@ export default function DedicatedPdfToolPage({ params }: Props) {
       files.map((f) => ({
         label: f.name,
         inputSize: f.size,
-        engine: "server",
+        engine: fallbackFn ? "hybrid" : "server",
         run: async (ctx) => {
-          const res = await runServerJob(serverOp, [f.file], [f.name], options, ctx.signal, (p, s) =>
-            ctx.progress(p, s)
-          );
-          return { outputs: res.files, warnings: res.warnings };
+          try {
+            const res = await runServerJob(serverOp, [f.file], [f.name], options, ctx.signal, (p, s) =>
+              ctx.progress(p, s)
+            );
+            return { outputs: res.files, warnings: res.warnings };
+          } catch (err: any) {
+            // Check for server unreachability, 404, or network failure
+            const isServerIssue =
+              err?.status === 404 ||
+              err?.status === 0 ||
+              /not reach|disappeared|HTTP 404|404|NetworkError/i.test(err?.message || "");
+
+            if (isServerIssue && fallbackFn) {
+              ctx.progress(0.2, "Switching to client processing pipeline");
+              const clientOutputs = await fallbackFn(f.file, ctx);
+              return {
+                outputs: clientOutputs,
+                warnings: ["Processed locally with client high-speed engine"],
+              };
+            }
+            throw err;
+          }
         },
       }))
     );
     setDrawer(true);
   };
 
-  const isLocalEngine = tool?.engine === "local" || isImagesToPdf || ["merge", "split", "rotate", "page-numbers", "watermark"].includes(toolSlug);
+  const isLocalEngine =
+    tool?.engine === "local" ||
+    isImagesToPdf ||
+    isOrganize ||
+    [
+      "merge",
+      "split",
+      "rotate",
+      "delete",
+      "extract",
+      "crop",
+      "page-numbers",
+      "watermark",
+      "header-footer",
+      "edit",
+      "sign",
+      "to-image",
+      "to-text",
+      "ocr",
+    ].includes(toolSlug);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-150">
@@ -266,13 +630,15 @@ export default function DedicatedPdfToolPage({ params }: Props) {
           <div>
             <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
               <span>{tool?.name || "PDF Workspace Tool"}</span>
-              <span className={clsx(
-                "text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded",
-                isLocalEngine
-                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                  : "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
-              )}>
-                {isLocalEngine ? "In-Browser" : "High-Fidelity Engine"}
+              <span
+                className={clsx(
+                  "text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded",
+                  isLocalEngine
+                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                    : "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                )}
+              >
+                {isLocalEngine ? "In-Browser (100% Private)" : "Hybrid & High-Fidelity"}
               </span>
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -290,10 +656,42 @@ export default function DedicatedPdfToolPage({ params }: Props) {
           onRemoveFile={(id) => setFiles((prev) => prev.filter((f) => f.id !== id))}
           onClearAll={() => setFiles([])}
           accept={acceptedExt}
-          title={isImagesToPdf ? "Drop images to convert into a compiled PDF" : `Drop PDF file(s) for ${tool?.name || "processing"}`}
-          description={isImagesToPdf ? "Supports PNG, JPEG, WebP, BMP images" : "Select or drag PDF documents to begin"}
+          title={
+            isImagesToPdf
+              ? "Drop images to convert into a compiled PDF"
+              : `Drop PDF file(s) for ${tool?.name || "processing"}`
+          }
+          description={
+            isImagesToPdf
+              ? "Supports PNG, JPEG, WebP, BMP images"
+              : "Select or drag PDF documents to begin"
+          }
           showToolRecommendations={false}
         />
+      ) : isOrganize ? (
+        // Dedicated Visual Page Organizer Layout for Organize Pages
+        <div className="space-y-4">
+          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs">
+            <div className="flex items-center gap-2">
+              <FileText className="w-4 h-4 text-blue-500" />
+              <span className="font-semibold text-slate-800 dark:text-slate-200">
+                {files[0].name} ({formatBytes(files[0].size)})
+              </span>
+            </div>
+            <button
+              onClick={() => setFiles([])}
+              className="text-xs text-slate-500 hover:text-red-500 transition-colors cursor-pointer"
+            >
+              Choose different PDF
+            </button>
+          </div>
+
+          <PageOrganizer
+            file={files[0].file}
+            onApply={handleApplyOrganize}
+            isProcessing={isProcessing}
+          />
+        </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
           {/* Left Column: Uploaded Files & Staging Deck (5 cols) */}
@@ -322,11 +720,183 @@ export default function DedicatedPdfToolPage({ params }: Props) {
               </span>
             </div>
 
-            {/* Options for to-pptx */}
-            {(toolSlug === "to-pptx" || toolSlug === "pdf-to-pptx") && (
+            {/* Options for Rotate */}
+            {toolSlug === "rotate" && (
               <div className="space-y-2">
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Slide Layout Reconstruction:
+                  Rotation Angle:
+                </label>
+                <div className="grid grid-cols-3 gap-2.5">
+                  {[
+                    { angle: 90, label: "90° Clockwise" },
+                    { angle: 180, label: "180° Flip" },
+                    { angle: 270, label: "270° (90° CCW)" },
+                  ].map((item) => (
+                    <button
+                      key={item.angle}
+                      type="button"
+                      onClick={() => setRotateAngle(item.angle)}
+                      className={clsx(
+                        "p-2.5 rounded-xl border text-center text-xs transition-all cursor-pointer",
+                        rotateAngle === item.angle
+                          ? "border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-semibold"
+                          : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                      )}
+                    >
+                      <RotateCw className="w-4 h-4 mx-auto mb-1" />
+                      <div>{item.label}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Options for Delete Pages */}
+            {toolSlug === "delete" && (
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                  Pages to Remove (1-based, comma separated):
+                </label>
+                <input
+                  type="text"
+                  value={deletePagesSpec}
+                  onChange={(e) => setDeletePagesSpec(e.target.value)}
+                  placeholder="e.g. 2, 4, 7"
+                  className="w-full max-w-sm px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Enter the specific page numbers you want deleted from the document.
+                </p>
+              </div>
+            )}
+
+            {/* Options for Crop */}
+            {toolSlug === "crop" && (
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                  Crop Margins (Points / approx 1/72 inch):
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {(["top", "bottom", "left", "right"] as const).map((side) => (
+                    <div key={side}>
+                      <span className="text-[10px] uppercase font-bold text-slate-400 block mb-0.5">
+                        {side}
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        max="200"
+                        value={cropMargins[side]}
+                        onChange={(e) =>
+                          setCropMargins((prev) => ({
+                            ...prev,
+                            [side]: parseInt(e.target.value, 10) || 0,
+                          }))
+                        }
+                        className="w-full px-2 py-1 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Options for Header & Footer */}
+            {toolSlug === "header-footer" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    Running Header Text:
+                  </label>
+                  <input
+                    type="text"
+                    value={headerText}
+                    onChange={(e) => setHeaderText(e.target.value)}
+                    placeholder="e.g. Project Vellum Specification"
+                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    Running Footer Text:
+                  </label>
+                  <input
+                    type="text"
+                    value={footerText}
+                    onChange={(e) => setFooterText(e.target.value)}
+                    placeholder="e.g. Confidential & Proprietary"
+                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Options for PDF to Image */}
+            {toolSlug === "to-image" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    Output Image Format:
+                  </label>
+                  <div className="flex items-center gap-2">
+                    {(["png", "jpeg", "webp"] as const).map((fmt) => (
+                      <button
+                        key={fmt}
+                        type="button"
+                        onClick={() => setImageFormat(fmt)}
+                        className={clsx(
+                          "px-3 py-1 rounded-lg border text-xs font-semibold uppercase cursor-pointer",
+                          imageFormat === fmt
+                            ? "border-blue-500 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-300"
+                            : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                        )}
+                      >
+                        {fmt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    Resolution Quality:
+                  </label>
+                  <select
+                    value={imageDpi}
+                    onChange={(e) => setImageDpi(parseFloat(e.target.value))}
+                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
+                  >
+                    <option value={1.5}>Standard (108 DPI)</option>
+                    <option value={2.0}>High (144 DPI - Recommended)</option>
+                    <option value={3.0}>Ultra HD (216 DPI)</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Options for OCR */}
+            {toolSlug === "ocr" && (
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                  Recognition Language:
+                </label>
+                <select
+                  value={ocrLang}
+                  onChange={(e) => setOcrLang(e.target.value)}
+                  className="w-full max-w-sm px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
+                >
+                  <option value="eng">English (Latin)</option>
+                  <option value="spa">Spanish (Español)</option>
+                  <option value="fra">French (Français)</option>
+                  <option value="deu">German (Deutsch)</option>
+                </select>
+              </div>
+            )}
+
+            {/* Options for to-pptx */}
+            {toolSlug === "to-pptx" && (
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Slide Layout Mode:
                 </label>
                 <div className="grid grid-cols-2 gap-2.5">
                   <button
@@ -339,9 +909,9 @@ export default function DedicatedPdfToolPage({ params }: Props) {
                         : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
                     )}
                   >
-                    <div className="font-bold">Hybrid (Recommended)</div>
+                    <div className="font-bold">Hybrid (Editable Text)</div>
                     <div className="text-[10px] text-slate-500 mt-0.5 leading-normal">
-                      Extracts editable text frames while preserving vector art
+                      Extracts structured text frames for editing in PowerPoint
                     </div>
                   </button>
                   <button
@@ -356,7 +926,7 @@ export default function DedicatedPdfToolPage({ params }: Props) {
                   >
                     <div className="font-bold">Image Slides</div>
                     <div className="text-[10px] text-slate-500 mt-0.5 leading-normal">
-                      Renders rasterized slide pages for exact visual match
+                      Renders exact high-resolution slide images
                     </div>
                   </button>
                 </div>
@@ -364,7 +934,7 @@ export default function DedicatedPdfToolPage({ params }: Props) {
             )}
 
             {/* Options for Password Protect */}
-            {(toolSlug === "protect" || toolSlug === "pdf-protect") && (
+            {toolSlug === "protect" && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
@@ -394,7 +964,7 @@ export default function DedicatedPdfToolPage({ params }: Props) {
             )}
 
             {/* Options for Password Unlock */}
-            {(toolSlug === "unlock" || toolSlug === "pdf-unlock") && (
+            {toolSlug === "unlock" && (
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Enter Document Decryption Password:
@@ -410,16 +980,16 @@ export default function DedicatedPdfToolPage({ params }: Props) {
             )}
 
             {/* Options for Compress */}
-            {(toolSlug === "compress" || toolSlug === "pdf-compress") && (
+            {toolSlug === "compress" && (
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
                   Compression Preset:
                 </label>
                 <div className="grid grid-cols-3 gap-2.5">
                   {[
-                    { id: "low", label: "Low", desc: "Max quality (200 DPI)" },
-                    { id: "balanced", label: "Balanced", desc: "Best balance (144 DPI)" },
-                    { id: "max", label: "Maximum", desc: "Smallest size (96 DPI)" },
+                    { id: "low", label: "Low", desc: "Max quality" },
+                    { id: "balanced", label: "Balanced", desc: "Best balance" },
+                    { id: "max", label: "Maximum", desc: "Smallest size" },
                   ].map((lvl) => (
                     <button
                       key={lvl.id}
@@ -440,8 +1010,8 @@ export default function DedicatedPdfToolPage({ params }: Props) {
               </div>
             )}
 
-            {/* Options for Watermark */}
-            {(toolSlug === "watermark" || toolSlug === "pdf-watermark") && (
+            {/* Options for Watermark & Annotate */}
+            {(toolSlug === "watermark" || toolSlug === "edit" || toolSlug === "sign") && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
@@ -451,7 +1021,7 @@ export default function DedicatedPdfToolPage({ params }: Props) {
                     type="text"
                     value={watermarkText}
                     onChange={(e) => setWatermarkText(e.target.value)}
-                    placeholder="e.g. CONFIDENTIAL, DRAFT"
+                    placeholder="e.g. CONFIDENTIAL, DRAFT, APPROVED"
                     className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
                   />
                 </div>
@@ -473,7 +1043,7 @@ export default function DedicatedPdfToolPage({ params }: Props) {
             )}
 
             {/* Options for Page Numbers */}
-            {(toolSlug === "page-numbers" || toolSlug === "pdf-page-numbers") && (
+            {toolSlug === "page-numbers" && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
@@ -506,8 +1076,8 @@ export default function DedicatedPdfToolPage({ params }: Props) {
               </div>
             )}
 
-            {/* Options for Split / Extract */}
-            {(toolSlug === "split" || toolSlug === "pdf-split" || toolSlug === "to-svg") && (
+            {/* Options for Split / Extract / Custom Range */}
+            {(toolSlug === "split" || toolSlug === "extract" || toolSlug === "to-svg" || toolSlug === "to-image" || toolSlug === "to-text") && (
               <div>
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                   Custom Page Range (leave blank for all pages):
@@ -525,7 +1095,9 @@ export default function DedicatedPdfToolPage({ params }: Props) {
             {/* Action Bar */}
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <div className="text-[11px] text-slate-400">
-                {isLocalEngine ? "Client-side browser processing" : "Local server high-fidelity pipeline"}
+                {isLocalEngine
+                  ? "Client-side browser processing · 100% Private"
+                  : "Automatic hybrid engine with client fallback"}
               </div>
               <button
                 onClick={handleRunTool}
