@@ -27,10 +27,17 @@ export default function PresentationStudioPage() {
   const [imageFormat, setImageFormat] = useState<"png" | "jpeg" | "webp">("png");
   const [secondsPerSlide, setSecondsPerSlide] = useState(3);
   const [videoWidth, setVideoWidth] = useState(1920);
+  const [showConsentModal, setShowConsentModal] = useState(false);
   const { enqueue, setDrawer } = useQueue();
+  const { cloudConsent } = useSettings();
 
   const handleRunPresentationTask = () => {
     if (files.length === 0) return;
+
+    if (!cloudConsent) {
+      setShowConsentModal(true);
+      return;
+    }
 
     if (outputMode === "pdf") {
       enqueue(
