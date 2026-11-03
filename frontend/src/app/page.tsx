@@ -4,6 +4,7 @@ import { useScanStore } from "@/stores/scanStore";
 import { useHistory } from "@/stores/history";
 import { StorageChart } from "@/components/StorageChart";
 import { DropZone, type StagedFile } from "@/components/DropZone";
+import { Logo } from "@/components/Logo";
 import { TOOLS } from "@/lib/tools";
 import {
   formatBytes,
