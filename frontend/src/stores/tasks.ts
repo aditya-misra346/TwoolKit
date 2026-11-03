@@ -2,7 +2,7 @@
 /**
  * Batch processing engine.
  *
- * Every operation in Vellum (local or server) runs as a Task in this queue.
+ * Every operation in TWOOLKIT (local or server) runs as a Task in this queue.
  * The scheduler limits concurrency separately for in-browser work (CPU/memory
  * bound) and server jobs, supports per-batch pause/resume (stops dispatching
  * queued tasks; running tasks finish), cancel (aborts in-flight work), and

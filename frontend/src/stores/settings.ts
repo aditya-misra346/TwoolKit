@@ -14,7 +14,7 @@ export interface Settings {
   theme: ThemePref;
   motion: "system" | "reduce" | "full";
   sidebarCollapsed: boolean;
-  /** User has consented to uploading files to the Vellum processing server. */
+  /** User has consented to uploading files to the TWOOLKIT processing server. */
   cloudConsent: boolean;
   /** Ask before every server upload even when consent was given. */
   confirmEachUpload: boolean;
