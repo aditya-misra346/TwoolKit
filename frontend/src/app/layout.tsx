@@ -1,0 +1,36 @@
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import { AppShell } from "@/components/AppShell";
+import "./globals.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Vellum — All-in-One File Management, Scanning & Conversion",
+  description:
+    "An enterprise-grade, all-in-one file management platform combining document scanning, storage management, PDF utilities, image studio, file compression, and batch processing.",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" className="h-full">
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased h-full overflow-hidden text-slate-900 dark:text-slate-100`}
+      >
+        <AppShell>{children}</AppShell>
+      </body>
+    </html>
+  );
+}
