@@ -78,6 +78,7 @@ export default function DedicatedPdfToolPage({ params }: Props) {
   const { tool: rawToolSlug } = use(params);
   const router = useRouter();
   const { enqueue, setDrawer } = useQueue();
+  const { cloudConsent } = useSettings();
 
   // Normalize tool slug (strip leading "pdf-" if present for clean routing matching)
   const toolSlug = rawToolSlug.replace(/^pdf-/, "");
