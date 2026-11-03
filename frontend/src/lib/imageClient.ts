@@ -117,7 +117,7 @@ export async function decodeToCanvas(blob: Blob): Promise<HTMLCanvasElement> {
   if (isHeic) {
     try {
       const buf = await blob.arrayBuffer();
-      const { width, height, data } = await decodeHeic({ buffer: buf });
+      const { width, height, data } = await decodeHeic({ buffer: new Uint8Array(buf) });
       const canvas = document.createElement("canvas");
       canvas.width = width;
       canvas.height = height;
