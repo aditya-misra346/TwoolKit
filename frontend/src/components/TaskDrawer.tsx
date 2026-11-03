@@ -238,8 +238,11 @@ export function TaskDrawer() {
                           {task.status === "running" && (
                             <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5 overflow-hidden">
                               <div
-                                className="bg-blue-600 h-full transition-all duration-150"
-                                style={{ width: `${Math.round(task.progress * 100)}%` }}
+                                className={clsx(
+                                  "bg-blue-600 h-full transition-all duration-150",
+                                  task.progress == null && "animate-pulse w-full"
+                                )}
+                                style={{ width: task.progress != null ? `${Math.round(task.progress * 100)}%` : "100%" }}
                               />
                             </div>
                           )}
