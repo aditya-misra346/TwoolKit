@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_SECTIONS, TOOLS } from "@/lib/tools";
 import { useSettings } from "@/stores/settings";
+import { Logo } from "@/components/Logo";
 import {
   ChevronLeft,
   ChevronRight,
@@ -30,19 +31,11 @@ export function Sidebar() {
     >
       {/* Brand Header */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200/70 dark:border-slate-800/70">
-        <Link href="/" className="flex items-center gap-3 overflow-hidden group">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform shrink-0">
-            <Layers className="w-4 h-4" />
-          </div>
-          {!sidebarCollapsed && (
-            <div className="flex flex-col min-w-0">
-              <span className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-white leading-none">
-                TWOOLKIT
-              </span>
-              <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 tracking-wider uppercase mt-1">
-                Workspace
-              </span>
-            </div>
+        <Link href="/" className="flex items-center overflow-hidden group">
+          {sidebarCollapsed ? (
+            <Logo variant="icon" size="sm" />
+          ) : (
+            <Logo variant="full" size="md" />
           )}
         </Link>
         <button
