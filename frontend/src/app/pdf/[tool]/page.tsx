@@ -749,11 +749,16 @@ export default function DedicatedPdfToolPage({ params }: Props) {
             );
             return { outputs: res.files, warnings: res.warnings };
           } catch (err: any) {
-            // Check for server unreachability, 404, or network failure
+            // Check for server unreachability, 404, 503, 428, or network failure
             const isServerIssue =
               err?.status === 404 ||
+              err?.status === 428 ||
+              err?.status === 502 ||
+              err?.status === 503 ||
               err?.status === 0 ||
-              /not reach|disappeared|HTTP 404|404|NetworkError/i.test(err?.message || "");
+              /not reach|disappeared|HTTP 404|404|503|502|428|NetworkError|active backend service|Server processing is turned off/i.test(
+                err?.message || ""
+              );
 
             if (isServerIssue && fallbackFn) {
               ctx.progress(0.2, "Switching to client processing pipeline");
