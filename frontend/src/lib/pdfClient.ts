@@ -28,12 +28,9 @@ export interface RenderedThumbnail {
 let _pdfjs: typeof import("pdfjs-dist") | null = null;
 
 export async function getPdfJs() {
-  if (typeof window === "undefined") {
-    throw new Error("PDF rendering is only supported in browser environments.");
-  }
   if (!_pdfjs) {
     const pdfjs = await import("pdfjs-dist");
-    if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+    if (typeof window !== "undefined" && !pdfjs.GlobalWorkerOptions.workerSrc) {
       pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
     }
     _pdfjs = pdfjs;
