@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 import { MobileNav } from "@/components/MobileNav";
 import { TaskDrawer } from "@/components/TaskDrawer";
 import { useHistory } from "@/stores/history";
@@ -45,9 +46,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
         <Header onToggleMobileMenu={() => setMobileDrawerOpen(true)} />
 
-        <main className="flex-1 overflow-y-auto pb-20 md:pb-6">
-          <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-            {children}
+        <main className="flex-1 overflow-y-auto">
+          <div className="min-h-full flex flex-col justify-between">
+            <div className="max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex-1">
+              {children}
+            </div>
+            <Footer />
           </div>
         </main>
       </div>
