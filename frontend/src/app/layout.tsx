@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Vellum — All-in-One File Management, Scanning & Conversion",
+  title: "TWOOLKIT — All-in-One File Management, Scanning & Conversion",
   description:
     "An enterprise-grade, all-in-one file management platform combining document scanning, storage management, PDF utilities, image studio, file compression, and batch processing.",
 };

@@ -36,8 +36,8 @@ export function Sidebar() {
           </div>
           {!sidebarCollapsed && (
             <div className="flex flex-col min-w-0">
-              <span className="font-bold text-sm tracking-tight text-slate-900 dark:text-white leading-none">
-                Vellum
+              <span className="font-extrabold text-sm tracking-tight text-slate-900 dark:text-white leading-none">
+                TWOOLKIT
               </span>
               <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500 tracking-wider uppercase mt-1">
                 Workspace
