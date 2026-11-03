@@ -11,18 +11,10 @@
       <stop offset="100%" stop-color="#1E40AF" />
     </linearGradient>
   </defs>
-  <!-- Symbol (32x32) at (4, 4) -->
   <g transform="translate(4, 4)">
-    <path
-      d="M 7 7 L 25 7 C 26.1 7 26.8 7.7 26.8 8.8 L 26.8 11.2 C 26.1 12.3 25 13 L 19.5 13 L 16 9.5 L 12.5 13 L 7 13 C 5.9 13 5.2 12.3 5.2 11.2 L 5.2 8.8 C 5.2 7.7 5.9 7 7 7 Z"
-      fill="url(#hl-top)"
-    />
-    <path
-      d="M 16 12 L 20.2 16.2 C 20.7 16.7 21 17.2 21 17.9 L 21 23.8 C 21 24.9 20.3 25.5 19.2 25.5 L 12.8 25.5 C 11.7 25.5 11 24.9 11 23.8 L 11 17.9 C 11 17.2 11.3 16.7 11.8 16.2 L 16 12 Z"
-      fill="url(#hl-stem)"
-    />
+    <path d="M 7 7 L 25 7 Q 26.8 7 26.8 8.8 L 26.8 11.2 Q 26.8 13 25 13 L 19.5 13 L 16 9.5 L 12.5 13 L 7 13 Q 5.2 13 5.2 11.2 L 5.2 8.8 Q 5.2 7 7 7 Z" fill="url(#hl-top)" />
+    <path d="M 16 12 L 20.2 16.2 Q 21 17 21 17.9 L 21 23.8 Q 21 25.5 19.2 25.5 L 12.8 25.5 Q 11 25.5 11 23.8 L 11 17.9 Q 11 17 11.8 16.2 L 16 12 Z" fill="url(#hl-stem)" />
   </g>
-  <!-- Wordmark -->
   <text x="44" y="22" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Geist Sans', 'Inter', sans-serif" font-size="16" font-weight="800" letter-spacing="0.05em" fill="#FFFFFF">TWOOLKIT</text>
   <text x="44" y="32" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Geist Sans', 'Inter', sans-serif" font-size="7.5" font-weight="600" letter-spacing="0.18em" fill="#64748B">WORKSPACE</text>
 </svg>
