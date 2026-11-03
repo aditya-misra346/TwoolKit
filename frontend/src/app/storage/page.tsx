@@ -20,6 +20,7 @@ import {
   Edit2,
   Check,
   X,
+  Search,
 } from "lucide-react";
 import clsx from "clsx";
 import Link from "next/link";
@@ -29,7 +30,7 @@ export default function StorageManagerPage() {
   const [activeTab, setActiveTab] = useState<"overview" | "cleanup" | "files" | "trash">("overview");
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameVal, setRenameVal] = useState("");
-  const [selectedCleanupKeys, setSelectedCleanupKeys] = useState<Record<string, boolean>>({});
+  const [fileSearch, setFileSearch] = useState("");
 
   // Compute smart cleanup recommendations from current scan
   const recommendations = useMemo(() => {
@@ -45,10 +46,10 @@ export default function StorageManagerPage() {
       list.push({
         id: "duplicates",
         title: "Redundant Duplicate Copies",
-        desc: `Exact and visually identical files taking up unnecessary space across your scanned folders.`,
+        desc: "Exact byte duplicates (SHA-256) and identical images wasting space across scanned folders.",
         recoverableBytes: dupBytes,
         fileIds: dupFileIds,
-        badge: `${dupFileIds.length} files`,
+        badge: `${dupFileIds.length} copies`,
         badgeColor: "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300",
       });
     }
@@ -59,8 +60,8 @@ export default function StorageManagerPage() {
       const largeBytes = veryLarge.reduce((a, f) => a + f.size, 0);
       list.push({
         id: "large",
-        title: "Oversized Media & Documents (>20MB)",
-        desc: `Individual files consuming significant storage that could be compressed or archived.`,
+        title: "Heavy Media & Oversized Documents (>20MB)",
+        desc: "Individual files consuming substantial disk space that could be compressed or archived.",
         recoverableBytes: largeBytes,
         fileIds: veryLarge.map((f) => f.id),
         badge: `${veryLarge.length} files`,
@@ -79,8 +80,8 @@ export default function StorageManagerPage() {
       const tempBytes = tempFiles.reduce((a, f) => a + f.size, 0);
       list.push({
         id: "temp",
-        title: "Temporary & Leftover Cache Files",
-        desc: `Leftover backup copies, OS thumbnails, and temporary files that are safe to discard.`,
+        title: "Temporary Leftover & Cache Files",
+        desc: "Auto-save copies, thumbnail caches, and temporary files that can be safely discarded.",
         recoverableBytes: tempBytes,
         fileIds: tempFiles.map((f) => f.id),
         badge: `${tempFiles.length} files`,
@@ -131,39 +132,46 @@ export default function StorageManagerPage() {
     return buckets;
   }, [currentScan]);
 
+  const filteredFileManagerFiles = useMemo(() => {
+    if (!currentScan) return [];
+    if (!fileSearch.trim()) return currentScan.files;
+    const q = fileSearch.toLowerCase();
+    return currentScan.files.filter((f) => f.name.toLowerCase().includes(q) || f.path.toLowerCase().includes(q));
+  }, [currentScan, fileSearch]);
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-200">
+    <div className="space-y-6 animate-in fade-in duration-150">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-            <HardDrive className="w-7 h-7 text-blue-600 dark:text-blue-400" />
-            Storage Manager
+          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+            <HardDrive className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            Storage Manager & Smart Cleanup
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
-            Smart cleanup suggestions, recoverable space analysis, and in-app Recycle Bin.
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+            Desktop-grade storage breakdown, automated waste detection, file organization, and non-destructive virtual recycling bin.
           </p>
         </div>
 
         {trash.length > 0 && (
           <button
             onClick={() => setActiveTab("trash")}
-            className="px-4 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-xs font-semibold flex items-center gap-2 self-start"
+            className="px-3.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/80 text-xs font-semibold flex items-center gap-2 self-start cursor-pointer hover:bg-amber-100 transition-colors"
           >
-            <Trash2 className="w-4 h-4 text-amber-600" />
-            Recycle Bin ({trash.length})
+            <Trash2 className="w-3.5 h-3.5 text-amber-600" />
+            <span>Recycle Bin ({trash.length})</span>
           </button>
         )}
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+      <div className="flex items-center gap-1.5 border-b border-slate-200 dark:border-slate-800 pb-2">
         <button
           onClick={() => setActiveTab("overview")}
           className={clsx(
-            "px-4 py-2 rounded-xl text-xs font-bold transition-all",
+            "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
             activeTab === "overview"
-              ? "bg-blue-600 text-white shadow-xs"
+              ? "bg-blue-600 text-white shadow-2xs"
               : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
           )}
         >
@@ -172,46 +180,46 @@ export default function StorageManagerPage() {
         <button
           onClick={() => setActiveTab("cleanup")}
           className={clsx(
-            "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5",
+            "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer",
             activeTab === "cleanup"
-              ? "bg-blue-600 text-white shadow-xs"
+              ? "bg-blue-600 text-white shadow-2xs"
               : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
           )}
         >
           <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-          Smart Cleanup ({recommendations.length})
+          <span>Smart Cleanup ({recommendations.length})</span>
         </button>
         <button
           onClick={() => setActiveTab("files")}
           className={clsx(
-            "px-4 py-2 rounded-xl text-xs font-bold transition-all",
+            "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
             activeTab === "files"
-              ? "bg-blue-600 text-white shadow-xs"
+              ? "bg-blue-600 text-white shadow-2xs"
               : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
           )}
         >
-          File Manager ({currentScan?.files.length || 0})
+          File Explorer ({currentScan?.files.length || 0})
         </button>
         <button
           onClick={() => setActiveTab("trash")}
           className={clsx(
-            "px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5",
+            "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer",
             activeTab === "trash"
-              ? "bg-blue-600 text-white shadow-xs"
+              ? "bg-blue-600 text-white shadow-2xs"
               : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
           )}
         >
           <Trash2 className="w-3.5 h-3.5" />
-          Recycle Bin ({trash.length})
+          <span>Recycle Bin ({trash.length})</span>
         </button>
       </div>
 
       {/* TAB 1: OVERVIEW */}
       {activeTab === "overview" && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-8 p-6 sm:p-8 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white mb-6">
+        <div className="space-y-5">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            <div className="lg:col-span-8 p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs">
+              <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white mb-4">
                 Current Storage Allocation
               </h2>
               <StorageChart
@@ -220,40 +228,40 @@ export default function StorageManagerPage() {
               />
             </div>
 
-            <div className="lg:col-span-4 p-6 rounded-3xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-md flex flex-col justify-between">
+            <div className="lg:col-span-4 p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white shadow-md flex flex-col justify-between">
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-blue-200">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-blue-200">
                   Estimated Cleanable Space
                 </span>
-                <div className="text-3xl sm:text-4xl font-black mt-2 tracking-tight">
+                <div className="text-2xl sm:text-3xl font-black mt-1.5 tracking-tight">
                   {formatBytes(totalRecoverable)}
                 </div>
                 <p className="text-xs text-blue-100/90 mt-2 leading-relaxed">
-                  Based on redundant duplicate copies, oversized media, and temporary cache files.
+                  Calculated from verified redundant duplicates, oversized media, and temporary cache files.
                 </p>
               </div>
 
-              <div className="pt-6">
+              <div className="pt-5">
                 <button
                   onClick={() => setActiveTab("cleanup")}
-                  className="w-full py-2.5 px-4 rounded-xl bg-white text-blue-700 hover:bg-blue-50 font-bold text-xs shadow-xs transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-2 px-3 rounded-xl bg-white text-blue-700 hover:bg-blue-50 font-bold text-xs shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <Sparkles className="w-4 h-4 text-amber-500" />
-                  Review Cleanup Suggestions
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Review Cleanup Suggestions</span>
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Privacy Note on Storage Access */}
-          <div className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 flex items-start gap-3">
+          {/* Privacy & Sandbox Notice */}
+          <div className="p-3.5 rounded-xl bg-slate-100/80 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800/80 text-xs text-slate-600 dark:text-slate-400 flex items-start gap-2.5">
             <Shield className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               <span className="font-semibold text-slate-800 dark:text-slate-200">
-                Browser Storage Sandbox Notice
+                Secure Sandboxed Storage Access
               </span>
-              <p className="leading-relaxed">
-                Modern browsers run web applications in a secure sandbox. Vellum analyzes only files and folders you intentionally select or grant access to via the File System Access API. It does not silently monitor arbitrary OS root volumes.
+              <p className="leading-relaxed text-[11px]">
+                Vellum operates in accordance with web sandbox security. Only directories and files you explicitly select or drag into the workspace are scanned. System-wide disk bypasses are never performed.
               </p>
             </div>
           </div>
@@ -262,12 +270,12 @@ export default function StorageManagerPage() {
 
       {/* TAB 2: SMART CLEANUP */}
       {activeTab === "cleanup" && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {recommendations.length === 0 ? (
             <div className="p-12 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
               <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
               <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
-                Storage is clean!
+                Storage is clean and optimized!
               </p>
               <p className="text-xs text-slate-400 mt-1">
                 No duplicate copies, excessive temporary files, or unneeded cache files found.
@@ -277,14 +285,14 @@ export default function StorageManagerPage() {
             recommendations.map((rec) => (
               <div
                 key={rec.id}
-                className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
               >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">
                       {rec.title}
                     </h3>
-                    <span className={clsx("px-2 py-0.5 rounded-sm text-[10px] font-bold uppercase", rec.badgeColor)}>
+                    <span className={clsx("px-2 py-0.5 rounded text-[10px] font-bold uppercase", rec.badgeColor)}>
                       {rec.badge}
                     </span>
                   </div>
@@ -295,17 +303,17 @@ export default function StorageManagerPage() {
 
                 <div className="flex items-center gap-4 shrink-0">
                   <div className="text-right">
-                    <span className="text-xs text-slate-400 font-medium block">Recoverable</span>
-                    <span className="text-base font-extrabold text-blue-600 dark:text-blue-400 font-mono">
+                    <span className="text-[10px] text-slate-400 font-medium block">Recoverable</span>
+                    <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400 font-mono">
                       {formatBytes(rec.recoverableBytes)}
                     </span>
                   </div>
                   <button
                     onClick={() => handleApplyCleanup(rec)}
-                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-colors flex items-center gap-1.5"
+                    className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    Clean Files
+                    <span>Move to Bin</span>
                   </button>
                 </div>
               </div>
@@ -316,15 +324,27 @@ export default function StorageManagerPage() {
 
       {/* TAB 3: FILE MANAGER (RENAME, DELETE) */}
       {activeTab === "files" && (
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-xs">
+        <div className="space-y-3">
+          {/* Search bar */}
+          <div className="flex items-center gap-2 p-2 px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs max-w-md">
+            <Search className="w-3.5 h-3.5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search loaded files..."
+              value={fileSearch}
+              onChange={(e) => setFileSearch(e.target.value)}
+              className="w-full bg-transparent text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden"
+            />
+          </div>
+
+          <div className="rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
+              <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-400 font-semibold uppercase tracking-wider text-[10px] border-b border-slate-200 dark:border-slate-800">
                 <tr>
-                  <th className="py-3 px-4">Filename / Path</th>
-                  <th className="py-3 px-4">Size</th>
-                  <th className="py-3 px-4">Category</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  <th className="py-2.5 px-4">Filename / Path</th>
+                  <th className="py-2.5 px-4">Size</th>
+                  <th className="py-2.5 px-4">Category</th>
+                  <th className="py-2.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -334,28 +354,34 @@ export default function StorageManagerPage() {
                       No files currently loaded. Scan a folder in the File Scanner first.
                     </td>
                   </tr>
+                ) : filteredFileManagerFiles.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="py-8 text-center text-slate-400">
+                      No files match &quot;{fileSearch}&quot;.
+                    </td>
+                  </tr>
                 ) : (
-                  currentScan.files.map((file) => (
-                    <tr key={file.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                      <td className="py-3 px-4 font-medium text-slate-900 dark:text-white max-w-sm">
+                  filteredFileManagerFiles.map((file) => (
+                    <tr key={file.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                      <td className="py-2.5 px-4 font-medium text-slate-900 dark:text-white max-w-sm">
                         {renamingId === file.id ? (
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1.5">
                             <input
                               type="text"
                               value={renameVal}
                               onChange={(e) => setRenameVal(e.target.value)}
                               autoFocus
-                              className="px-2 py-1 rounded-md border border-blue-500 text-xs w-full bg-white dark:bg-slate-800"
+                              className="px-2 py-0.5 rounded border border-blue-500 text-xs w-full bg-white dark:bg-slate-800 focus:outline-hidden"
                             />
                             <button
                               onClick={() => handleSaveRename(file.id)}
-                              className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-sm"
+                              className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
                             >
                               <Check className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => setRenamingId(null)}
-                              className="p-1 text-slate-400 hover:bg-slate-100 rounded-sm"
+                              className="p-1 text-slate-400 hover:bg-slate-100 rounded"
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -366,21 +392,21 @@ export default function StorageManagerPage() {
                           </span>
                         )}
                       </td>
-                      <td className="py-3 px-4 font-mono">{formatBytes(file.size)}</td>
-                      <td className="py-3 px-4 uppercase text-[10px] text-slate-500">
+                      <td className="py-2.5 px-4 font-mono">{formatBytes(file.size)}</td>
+                      <td className="py-2.5 px-4 uppercase text-[10px] text-slate-500 font-semibold">
                         {file.category}
                       </td>
-                      <td className="py-3 px-4 text-right space-x-2">
+                      <td className="py-2.5 px-4 text-right space-x-1.5">
                         <button
                           onClick={() => handleStartRename(file.id, file.name)}
-                          className="text-slate-500 hover:text-blue-600 p-1"
+                          className="text-slate-400 hover:text-blue-600 p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                           title="Rename file"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => moveToTrash([file.id], "Manual deletion")}
-                          className="text-slate-400 hover:text-rose-500 p-1"
+                          className="text-slate-400 hover:text-rose-500 p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                           title="Move to Recycle Bin"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -397,61 +423,62 @@ export default function StorageManagerPage() {
 
       {/* TAB 4: RECYCLE BIN */}
       {activeTab === "trash" && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-xs">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between p-3.5 rounded-xl bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-xs">
             <div>
               <span className="font-bold text-amber-900 dark:text-amber-200 block">
                 Virtual In-App Recycle Bin
               </span>
-              <span className="text-amber-700 dark:text-amber-300">
+              <span className="text-amber-700 dark:text-amber-300 text-[11px]">
                 Files deleted within Vellum can be restored back to your active session.
               </span>
             </div>
             {trash.length > 0 && (
               <button
                 onClick={emptyTrash}
-                className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs shadow-xs"
+                className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs shadow-2xs cursor-pointer"
               >
                 Empty Recycle Bin
               </button>
             )}
           </div>
 
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+          <div className="rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-400 font-semibold uppercase tracking-wider text-[10px]">
+              <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-400 font-semibold uppercase tracking-wider text-[10px] border-b border-slate-200 dark:border-slate-800">
                 <tr>
-                  <th className="py-3 px-4">Filename</th>
-                  <th className="py-3 px-4">Size</th>
-                  <th className="py-3 px-4">Reason</th>
-                  <th className="py-3 px-4">Deleted At</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  <th className="py-2.5 px-4">Filename</th>
+                  <th className="py-2.5 px-4">Size</th>
+                  <th className="py-2.5 px-4">Reason</th>
+                  <th className="py-2.5 px-4">Deleted At</th>
+                  <th className="py-2.5 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {trash.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-10 text-center text-slate-400">
+                    <td colSpan={5} className="py-8 text-center text-slate-400">
                       Recycle bin is empty.
                     </td>
                   </tr>
                 ) : (
                   trash.map((item) => (
-                    <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                      <td className="py-3 px-4 font-medium text-slate-900 dark:text-white truncate max-w-xs">
+                    <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                      <td className="py-2.5 px-4 font-medium text-slate-900 dark:text-white truncate max-w-xs">
                         {item.originalFile.name}
                       </td>
-                      <td className="py-3 px-4 font-mono">{formatBytes(item.originalFile.size)}</td>
-                      <td className="py-3 px-4 text-slate-500">{item.reason}</td>
-                      <td className="py-3 px-4 text-slate-400 text-[11px]">
+                      <td className="py-2.5 px-4 font-mono">{formatBytes(item.originalFile.size)}</td>
+                      <td className="py-2.5 px-4 text-slate-500">{item.reason}</td>
+                      <td className="py-2.5 px-4 text-slate-400 text-[11px]">
                         {formatDate(item.deletedAt)}
                       </td>
-                      <td className="py-3 px-4 text-right">
+                      <td className="py-2.5 px-4 text-right">
                         <button
                           onClick={() => restoreFromTrash([item.id])}
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 hover:bg-emerald-100 transition-colors inline-flex items-center gap-1"
+                          className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 hover:bg-emerald-100 transition-colors inline-flex items-center gap-1 cursor-pointer"
                         >
-                          <RotateCcw className="w-3 h-3" /> Restore
+                          <RotateCcw className="w-3 h-3" />
+                          <span>Restore</span>
                         </button>
                       </td>
                     </tr>
