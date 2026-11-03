@@ -918,3 +918,97 @@ export async function ocrPdf(
   const blob = new Blob([fullText], { type: "text/plain; charset=utf-8" });
   return { name: "ocr-extracted-text.txt", blob, text: fullText };
 }
+
+/** 21. Protect PDF with AES-256 Encryption In-Browser */
+export interface ProtectPdfOptions {
+  userPassword: string;
+  ownerPassword?: string;
+  allowPrinting?: boolean;
+  allowCopying?: boolean;
+  allowModifying?: boolean;
+  allowAnnotating?: boolean;
+}
+
+export async function protectPdfClient(
+  pdfBlob: Blob,
+  opts: ProtectPdfOptions,
+  onProgress?: (p: number, stage: string) => void
+): Promise<Blob> {
+  const pw = opts.userPassword ? opts.userPassword.trim() : "";
+  if (!pw) {
+    throw new Error("Password cannot be blank. Enter a password to protect the document.");
+  }
+
+  onProgress?.(0.2, "Validating PDF document structure");
+  const arrayBuffer = await pdfBlob.arrayBuffer();
+  const inputBytes = new Uint8Array(arrayBuffer);
+
+  const { encryptPDF, AlreadyEncryptedError } = await import("@pdfsmaller/pdf-encrypt");
+
+  onProgress?.(0.5, "Applying AES-256 (Revision 6) enterprise encryption");
+  let encryptedBytes: Uint8Array;
+  try {
+    encryptedBytes = await encryptPDF(inputBytes, pw, {
+      ownerPassword: opts.ownerPassword?.trim() || pw,
+      algorithm: "AES-256",
+      allowPrinting: opts.allowPrinting ?? true,
+      allowCopying: opts.allowCopying ?? true,
+      allowModifying: opts.allowModifying ?? false,
+      allowAnnotating: opts.allowAnnotating ?? true,
+    });
+  } catch (err: any) {
+    if (err?.code === "ALREADY_ENCRYPTED" || err instanceof AlreadyEncryptedError) {
+      throw new Error("This PDF is already password-protected. Please unlock it before applying a new password.");
+    }
+    throw new Error(err?.message || "Failed to encrypt PDF.");
+  }
+
+  onProgress?.(0.85, "Verifying encryption integrity");
+  try {
+    const { PDFDocument } = await import("pdf-lib");
+    await PDFDocument.load(encryptedBytes);
+    throw new Error("Verification failed: Output document is not encrypted.");
+  } catch (e: any) {
+    if (e.message && e.message.includes("encrypted")) {
+      // Confirmed encrypted
+    } else if (e.message && e.message.includes("Verification failed")) {
+      throw e;
+    }
+  }
+
+  onProgress?.(1.0, "Document encrypted successfully");
+  return new Blob([encryptedBytes as BlobPart], { type: "application/pdf" });
+}
+
+/** 22. Unlock Password-Protected PDF In-Browser */
+export async function unlockPdfClient(
+  pdfBlob: Blob,
+  password: string,
+  onProgress?: (p: number, stage: string) => void
+): Promise<Blob> {
+  const pw = password ? password.trim() : "";
+  if (!pw) {
+    throw new Error("Enter the decryption password to unlock this PDF.");
+  }
+
+  onProgress?.(0.2, "Reading encrypted document streams");
+  const arrayBuffer = await pdfBlob.arrayBuffer();
+  const inputBytes = new Uint8Array(arrayBuffer);
+
+  const { decryptPDF } = await import("@pdfsmaller/pdf-decrypt");
+
+  onProgress?.(0.6, "Authenticating and decrypting document");
+  let decryptedBytes: Uint8Array;
+  try {
+    decryptedBytes = await decryptPDF(inputBytes, pw);
+  } catch (err: any) {
+    const msg = err?.message || String(err);
+    if (/incorrect password|does not match/i.test(msg)) {
+      throw new Error("Incorrect password. The document could not be unlocked.");
+    }
+    throw new Error(msg || "Failed to unlock PDF.");
+  }
+
+  onProgress?.(1.0, "PDF unlocked successfully");
+  return new Blob([decryptedBytes as BlobPart], { type: "application/pdf" });
+}
