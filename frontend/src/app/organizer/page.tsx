@@ -21,9 +21,14 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 
-export default function FileOrganizerPage() {
+function OrganizerContent() {
+  const searchParams = useSearchParams();
+  const requested = searchParams.get("tab") || searchParams.get("mode");
+  const initialMode: "rename" | "categorize" | "archive" | "extract" =
+    requested === "archive" || requested === "extract" || requested === "categorize" ? requested : "rename";
+
   const [files, setFiles] = useState<StagedFile[]>([]);
-  const [mode, setMode] = useState<"rename" | "categorize" | "archive" | "extract">("rename");
+  const [mode, setMode] = useState<"rename" | "categorize" | "archive" | "extract">(initialMode);
 
   // Rename settings
   const [prefix, setPrefix] = useState("");
@@ -378,5 +383,13 @@ export default function FileOrganizerPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function FileOrganizerPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-xs text-slate-400">Loading Organizer...</div>}>
+      <OrganizerContent />
+    </Suspense>
   );
 }
