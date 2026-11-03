@@ -215,7 +215,7 @@ export function TaskDrawer() {
                             <div className="flex items-center gap-2 shrink-0">
                               {task.status === "running" && (
                                 <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">
-                                  {Math.round(task.progress * 100)}%
+                                  {task.progress != null ? `${Math.round(task.progress * 100)}%` : "Processing..."}
                                 </span>
                               )}
                               {task.status === "completed" && (
