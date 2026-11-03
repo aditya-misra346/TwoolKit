@@ -1121,47 +1121,224 @@ export default function DedicatedPdfToolPage({ params }: Props) {
 
             {/* Options for Password Protect */}
             {toolSlug === "protect" && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="space-y-4">
+                {/* Engine Selector */}
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                    User Password (Required to Open):
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+                    Encryption Engine:
                   </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter document password"
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
-                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setProtectEngine("local")}
+                      className={clsx(
+                        "p-3 rounded-xl border text-left text-xs transition-all cursor-pointer relative",
+                        protectEngine === "local"
+                          ? "border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-semibold"
+                          : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                      )}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold flex items-center gap-1.5">
+                          <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          In-Browser AES-256
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-semibold">
+                          Recommended
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                        100% private. Files never leave your device.
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setProtectEngine("server")}
+                      className={clsx(
+                        "p-3 rounded-xl border text-left text-xs transition-all cursor-pointer",
+                        protectEngine === "server"
+                          ? "border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-semibold"
+                          : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                      )}
+                    >
+                      <div className="font-bold flex items-center gap-1.5">
+                        <Cpu className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        Local Server Engine
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                        High-throughput engine via pikepdf with automatic client fallback.
+                      </div>
+                    </button>
+                  </div>
                 </div>
+
+                {/* Password Fields */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  {/* User Password */}
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Document Opening Password <span className="text-red-500">*</span>:
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => {
+                          setPassword(e.target.value);
+                          if (validationError) setValidationError(null);
+                        }}
+                        placeholder="Enter opening password"
+                        className="w-full px-3 py-2 pr-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 cursor-pointer"
+                        title={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Required by anyone opening or viewing this PDF.
+                    </p>
+                  </div>
+
+                  {/* Confirm Password */}
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Confirm Opening Password <span className="text-red-500">*</span>:
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(e) => {
+                          setConfirmPassword(e.target.value);
+                          if (validationError) setValidationError(null);
+                        }}
+                        placeholder="Re-enter opening password"
+                        className={clsx(
+                          "w-full px-3 py-2 pr-9 rounded-lg border bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden",
+                          confirmPassword && password && confirmPassword === password
+                            ? "border-emerald-500"
+                            : confirmPassword && password && confirmPassword !== password
+                            ? "border-red-400"
+                            : "border-slate-200 dark:border-slate-700"
+                        )}
+                      />
+                      <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                        {confirmPassword && password && confirmPassword === password && (
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                        )}
+                      </div>
+                    </div>
+                    <p className="text-[11px] mt-1">
+                      {confirmPassword && password && confirmPassword === password ? (
+                        <span className="text-emerald-600 dark:text-emerald-400 font-medium">Passwords match</span>
+                      ) : confirmPassword && password && confirmPassword !== password ? (
+                        <span className="text-red-500 font-medium">Passwords do not match</span>
+                      ) : (
+                        <span className="text-slate-400">Verify your password to avoid lockouts.</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Owner Password (Optional) */}
                 <div>
                   <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                     Owner Password (Optional):
                   </label>
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={ownerPassword}
                     onChange={(e) => setOwnerPassword(e.target.value)}
-                    placeholder="Permissions master password"
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
+                    placeholder="Master password to modify permissions (optional)"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
                   />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    If left blank, your opening password will be used as the owner key.
+                  </p>
+                </div>
+
+                {/* Granular Document Permissions */}
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2.5">
+                  <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    Document Permissions & Access Controls:
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <label className="flex items-center gap-2 text-slate-700 dark:text-slate-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={allowPrinting}
+                        onChange={(e) => setAllowPrinting(e.target.checked)}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+                      />
+                      <span>Allow Printing</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-slate-700 dark:text-slate-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={allowCopying}
+                        onChange={(e) => setAllowCopying(e.target.checked)}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+                      />
+                      <span>Allow Text & Graphic Copying</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-slate-700 dark:text-slate-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={allowAnnotating}
+                        onChange={(e) => setAllowAnnotating(e.target.checked)}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+                      />
+                      <span>Allow Comments & Annotations</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-slate-700 dark:text-slate-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={allowModifying}
+                        onChange={(e) => setAllowModifying(e.target.checked)}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+                      />
+                      <span>Allow Editing & Form Filling</span>
+                    </label>
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Options for Password Unlock */}
             {toolSlug === "unlock" && (
-              <div>
+              <div className="space-y-2">
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                  Enter Document Decryption Password:
+                  Document Decryption Password:
                 </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password to unlock"
-                  className="w-full max-w-sm px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
-                />
+                <div className="relative max-w-sm">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (validationError) setValidationError(null);
+                    }}
+                    placeholder="Enter document password"
+                    className="w-full px-3 py-2 pr-9 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 cursor-pointer"
+                    title={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Enter the opening or owner password used when the document was encrypted.
+                </p>
               </div>
             )}
 
