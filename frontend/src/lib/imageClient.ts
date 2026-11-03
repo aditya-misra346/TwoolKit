@@ -489,7 +489,7 @@ export async function convertAndOptimizeImage(
     const imgData = ctx.getImageData(0, 0, width, height);
 
     // bmp-js expects ABGR buffer
-    const bmpBuf = Buffer.alloc ? Buffer.alloc(imgData.data.length) : new Uint8Array(imgData.data.length);
+    const bmpBuf = Buffer.alloc(imgData.data.length);
     for (let i = 0; i < imgData.data.length; i += 4) {
       bmpBuf[i] = imgData.data[i + 3];     // A
       bmpBuf[i + 1] = imgData.data[i + 2]; // B
@@ -554,7 +554,7 @@ export async function convertAndOptimizeImage(
     const ctx = finalCanvas.getContext("2d");
     if (!ctx) throw new Error("Canvas context unavailable");
     const imgData = ctx.getImageData(0, 0, width, height);
-    const tiffBytes = UTIF.encodeImage(imgData.data, width, height);
+    const tiffBytes = UTIF.encodeImage(new Uint8Array(imgData.data.buffer), width, height);
     const outBlob = new Blob([tiffBytes as BlobPart], { type: "image/tiff" });
     return { blob: outBlob, warnings, width, height, format: "tiff" };
   }
