@@ -1,4 +1,4 @@
-"""Central configuration for the Vellum processing backend.
+"""Central configuration for the TWOOLKIT processing backend.
 
 All values can be overridden with environment variables prefixed ``VELLUM_``.
 """
