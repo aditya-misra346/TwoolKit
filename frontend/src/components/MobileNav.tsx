@@ -29,8 +29,8 @@ export function MobileNav({ drawerOpen, onCloseDrawer }: MobileNavProps) {
                   <Layers className="w-4 h-4" />
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-bold text-sm text-slate-900 dark:text-white leading-none">
-                    Vellum
+                  <span className="font-extrabold text-sm text-slate-900 dark:text-white leading-none">
+                    TWOOLKIT
                   </span>
                   <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
                     Workspace

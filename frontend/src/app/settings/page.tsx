@@ -101,7 +101,7 @@ export default function SettingsPage() {
                   Allow Local Server Processing
                 </span>
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed block mt-0.5">
-                  Allows sending files to the localhost Vellum engine (127.0.0.1:8000) for heavy conversions like LibreOffice DOCX/PPTX to PDF.
+                  Allows sending files to the localhost TWOOLKIT engine (127.0.0.1:8000) for heavy conversions like LibreOffice DOCX/PPTX to PDF.
                 </span>
               </div>
               <input

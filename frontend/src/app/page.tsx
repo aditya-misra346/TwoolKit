@@ -337,7 +337,7 @@ export default function DashboardPage() {
           onRemoveFile={(id) => setStagedFiles((prev) => prev.filter((f) => f.id !== id))}
           onClearAll={() => setStagedFiles([])}
           title="Drop any documents, images, presentations, or folders here"
-          description="Vellum detects mime signatures and recommends optimal high-fidelity workflows"
+          description="TWOOLKIT detects mime signatures and recommends optimal high-fidelity workflows"
         />
       </div>
 
