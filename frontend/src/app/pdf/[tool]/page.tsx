@@ -775,6 +775,8 @@ export default function DedicatedPdfToolPage({ params }: Props) {
     tool?.engine === "local" ||
     isImagesToPdf ||
     isOrganize ||
+    (toolSlug === "protect" && protectEngine === "local") ||
+    toolSlug === "unlock" ||
     [
       "merge",
       "split",
