@@ -65,8 +65,8 @@ export default function ImageStudioPage() {
       setPreviewUrl(url);
       void inspectMetadata(selectedMetaFile.file).then((meta) => {
         setMetaInfo(meta);
-        if (meta.width && !width) setWidth(meta.width);
-        if (meta.height && !height) setHeight(meta.height);
+        if (meta?.width && !width) setWidth(meta.width);
+        if (meta?.height && !height) setHeight(meta.height);
       });
       return () => URL.revokeObjectURL(url);
     } else {
@@ -239,24 +239,24 @@ export default function ImageStudioPage() {
                     </span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[9px] uppercase font-bold">Original Date</span>
+                    <span className="text-slate-400 block text-[9px] uppercase font-bold">Capture Date</span>
                     <span className="font-medium text-slate-700 dark:text-slate-300 truncate block">
-                      {metaInfo.dateOriginal ? metaInfo.dateOriginal.split("T")[0] : "—"}
+                      {metaInfo.dateTime ? String(metaInfo.dateTime).split("T")[0] : "—"}
                     </span>
                   </div>
                   <div>
                     <span className="text-slate-400 block text-[9px] uppercase font-bold">GPS Geotag</span>
                     <span className={clsx(
                       "font-semibold block truncate",
-                      metaInfo.hasLocation ? "text-amber-600 dark:text-amber-400" : "text-slate-500"
+                      (metaInfo.latitude != null || metaInfo.longitude != null) ? "text-amber-600 dark:text-amber-400" : "text-slate-500"
                     )}>
-                      {metaInfo.hasLocation ? "Location Attached" : "None detected"}
+                      {(metaInfo.latitude != null || metaInfo.longitude != null) ? "Location Attached" : "None detected"}
                     </span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[9px] uppercase font-bold">Color Space</span>
+                    <span className="text-slate-400 block text-[9px] uppercase font-bold">Exposure / ISO</span>
                     <span className="font-medium text-slate-700 dark:text-slate-300 truncate block">
-                      {metaInfo.colorSpace || "sRGB"}
+                      {metaInfo.iso ? `ISO ${metaInfo.iso}` : "sRGB / Standard"}
                     </span>
                   </div>
                 </div>
