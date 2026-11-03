@@ -14,6 +14,8 @@ import {
   Sliders,
   RotateCcw,
   CheckCircle2,
+  Cpu,
+  Lock,
 } from "lucide-react";
 import { useState } from "react";
 import clsx from "clsx";
@@ -23,14 +25,9 @@ export default function SettingsPage() {
     theme,
     cloudConsent,
     purgeServerAfterDownload,
-    keepOutputs,
     maxOutputStorageMB,
     localConcurrency,
-    serverConcurrency,
-    defaultImageFormat,
-    defaultImageQuality,
     geminiApiKey,
-    geminiModel,
     set,
     reset,
   } = useSettings();
@@ -46,24 +43,24 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto animate-in fade-in duration-200">
+    <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in duration-150">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-          <Settings className="w-7 h-7 text-slate-700 dark:text-slate-300" />
-          Platform Settings & Privacy
+        <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
+          <Settings className="w-6 h-6 text-slate-700 dark:text-slate-300" />
+          Platform Preferences & Privacy
         </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
-          Configure security, privacy retention policies, local concurrency, theme, and AI capabilities.
+        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+          Configure interface theme, local host server consent, automatic file purge retention, parallel task limits, and AI keys.
         </p>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Section 1: Appearance & Theme */}
-        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider text-xs">
-            Appearance & Interface Theme
-          </h2>
-          <div className="grid grid-cols-3 gap-3 max-w-md">
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs space-y-3">
+          <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider block">
+            Interface Theme
+          </span>
+          <div className="grid grid-cols-3 gap-2.5 max-w-md">
             {[
               { id: "system", label: "System", icon: Laptop },
               { id: "light", label: "Light", icon: Sun },
@@ -76,9 +73,9 @@ export default function SettingsPage() {
                   type="button"
                   onClick={() => set({ theme: t.id as any })}
                   className={clsx(
-                    "p-3 rounded-2xl border text-center text-xs font-bold transition-all flex flex-col items-center gap-2",
+                    "p-3 rounded-xl border text-center text-xs font-bold transition-all flex flex-col items-center gap-1.5 cursor-pointer",
                     theme === t.id
-                      ? "border-blue-500 bg-blue-50 text-blue-900 dark:bg-blue-950/60 dark:text-blue-100 shadow-xs"
+                      ? "border-blue-500 bg-blue-50 text-blue-900 dark:bg-blue-950/60 dark:text-blue-100 shadow-2xs"
                       : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300"
                   )}
                 >
@@ -91,14 +88,14 @@ export default function SettingsPage() {
         </div>
 
         {/* Section 2: Privacy & Server Processing */}
-        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider text-xs flex items-center gap-2">
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs space-y-3">
+          <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
             <Shield className="w-4 h-4 text-emerald-500" />
-            Privacy & Processing Architecture
-          </h2>
+            <span>Processing Privacy & Retention</span>
+          </span>
 
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60">
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60">
               <div className="max-w-xl">
                 <span className="text-xs font-bold text-slate-900 dark:text-white block">
                   Allow Local Server Processing
@@ -111,36 +108,36 @@ export default function SettingsPage() {
                 type="checkbox"
                 checked={cloudConsent}
                 onChange={(e) => set({ cloudConsent: e.target.checked })}
-                className="w-5 h-5 accent-blue-600 rounded-sm cursor-pointer"
+                className="w-4 h-4 accent-blue-600 cursor-pointer ml-3 shrink-0"
               />
             </div>
 
-            <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60">
+            <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60">
               <div className="max-w-xl">
                 <span className="text-xs font-bold text-slate-900 dark:text-white block">
-                  Purge Server Temp Files Immediately After Download
+                  Instant Server Temp Purge After Download
                 </span>
                 <span className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed block mt-0.5">
-                  Sends an instant DELETE request to wipe the isolated job directory as soon as the browser receives the output bytes.
+                  Immediately deletes the isolated server job directory as soon as the output file is delivered to your browser.
                 </span>
               </div>
               <input
                 type="checkbox"
                 checked={purgeServerAfterDownload}
                 onChange={(e) => set({ purgeServerAfterDownload: e.target.checked })}
-                className="w-5 h-5 accent-blue-600 rounded-sm cursor-pointer"
+                className="w-4 h-4 accent-blue-600 cursor-pointer ml-3 shrink-0"
               />
             </div>
           </div>
         </div>
 
-        {/* Section 3: Concurrency & Storage Quota */}
-        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-          <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider text-xs">
-            Performance & Batch Limits
-          </h2>
+        {/* Section 3: Performance & Limits */}
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs space-y-3">
+          <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider block">
+            Performance & Resource Limits
+          </span>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                 Max In-Browser Parallel Tasks:
@@ -148,7 +145,7 @@ export default function SettingsPage() {
               <select
                 value={localConcurrency}
                 onChange={(e) => set({ localConcurrency: parseInt(e.target.value, 10) })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+                className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
               >
                 <option value={1}>1 (Low memory devices)</option>
                 <option value={2}>2 tasks</option>
@@ -159,7 +156,7 @@ export default function SettingsPage() {
 
             <div>
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                Max IndexedDB Output Cache (MB):
+                Max Output Cache in IndexedDB (MB):
               </label>
               <input
                 type="number"
@@ -167,25 +164,25 @@ export default function SettingsPage() {
                 max={5000}
                 value={maxOutputStorageMB}
                 onChange={(e) => set({ maxOutputStorageMB: parseInt(e.target.value, 10) || 500 })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs"
+                className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
               />
             </div>
           </div>
         </div>
 
-        {/* Section 4: Intelligent File Assistant (Gemini API) */}
-        <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+        {/* Section 4: Gemini API Integration */}
+        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider text-xs flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-amber-500" />
-              Intelligent File Assistant (Gemini API)
-            </h2>
-            <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-sm">
+              <span>Intelligent Document Assistant (Gemini API)</span>
+            </span>
+            <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
               Optional
             </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-            By default, Vellum performs rich local heuristic analysis. If you provide a Google Gemini API Key, Vellum will query Gemini Flash directly from your browser to summarize complex PDFs, generate executive briefs, and advise on formatting.
+            Vellum includes built-in local heuristics for document inspection. Providing a Google Gemini API Key enables deep semantic summarization, key fact extraction, and conversion compatibility scoring.
           </p>
 
           <div className="flex items-center gap-2">
@@ -194,20 +191,20 @@ export default function SettingsPage() {
               placeholder="Paste Gemini API Key (AIza...)"
               value={apiKeyInput}
               onChange={(e) => setApiKeyInput(e.target.value)}
-              className="flex-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono"
+              className="flex-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-mono focus:outline-hidden"
             />
             <button
               onClick={handleSaveApiKey}
-              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors shrink-0 flex items-center gap-1.5"
+              className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs transition-colors shrink-0 flex items-center gap-1.5 cursor-pointer"
             >
-              {savedSuccess ? <CheckCircle2 className="w-4 h-4 text-emerald-300" /> : <Key className="w-3.5 h-3.5" />}
-              {savedSuccess ? "Saved!" : "Save Key"}
+              {savedSuccess ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" /> : <Key className="w-3.5 h-3.5" />}
+              <span>{savedSuccess ? "Saved!" : "Save Key"}</span>
             </button>
           </div>
         </div>
 
         {/* Section 5: Reset Actions */}
-        <div className="pt-4 flex items-center justify-between">
+        <div className="pt-2 flex items-center justify-between">
           <button
             onClick={() => {
               if (confirm("Reset all settings and statistics to default values?")) {
@@ -215,10 +212,10 @@ export default function SettingsPage() {
                 void resetStats();
               }
             }}
-            className="px-4 py-2 rounded-xl border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-xs font-semibold hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors flex items-center gap-1.5"
+            className="px-3 py-1.5 rounded-lg border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 text-xs font-semibold hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            Reset All Preferences & Stats
+            <span>Reset All Preferences & Stats</span>
           </button>
         </div>
       </div>
