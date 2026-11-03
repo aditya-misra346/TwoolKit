@@ -812,7 +812,7 @@ export default function DedicatedPdfToolPage({ params }: Props) {
                     type="text"
                     value={headerText}
                     onChange={(e) => setHeaderText(e.target.value)}
-                    placeholder="e.g. Project Vellum Specification"
+                    placeholder="e.g. Project TWOOLKIT Specification"
                     className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
                   />
                 </div>

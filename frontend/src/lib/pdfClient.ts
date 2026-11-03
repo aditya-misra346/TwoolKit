@@ -765,7 +765,7 @@ export async function extractPdfToXlsx(
   const ExcelModule = await import("exceljs");
   const ExcelJS = (ExcelModule as any).default || ExcelModule;
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "Vellum File Platform";
+  workbook.creator = "TWOOLKIT File Platform";
   workbook.created = new Date();
 
   const { text } = await extractPdfText(pdfBlob, undefined, (p, s) => onProgress?.(p * 0.7, s));
