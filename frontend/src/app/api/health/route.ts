@@ -5,6 +5,6 @@ export async function GET() {
     ok: true,
     version: "1.0.0",
     engine: "in-browser",
-    platform: "Vellum SaaS",
+    platform: "TWOOLKIT SaaS",
   });
 }

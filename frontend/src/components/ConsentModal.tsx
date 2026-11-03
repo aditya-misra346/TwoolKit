@@ -48,10 +48,10 @@ export function ConsentModal({ isOpen, onClose, onConfirm }: ConsentModalProps) 
             Server Processing & Privacy
           </h3>
           <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 leading-relaxed">
-            Vellum runs <strong>in-browser first</strong> for PDF manipulation, scanning, duplicate detection, and image editing.
+            TWOOLKIT runs <strong>in-browser first</strong> for PDF manipulation, scanning, duplicate detection, and image editing.
           </p>
           <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 leading-relaxed">
-            Certain advanced conversions (like <em>Word/PowerPoint ↔ PDF</em> using headless LibreOffice, <em>PDF to DOCX layout reconstruction</em>, and <em>slide video rendering</em>) require uploading the file to the local Vellum server engine on this machine.
+            Certain advanced conversions (like <em>Word/PowerPoint ↔ PDF</em> using headless LibreOffice, <em>PDF to DOCX layout reconstruction</em>, and <em>slide video rendering</em>) require uploading the file to the local TWOOLKIT server engine on this machine.
           </p>
         </div>
 

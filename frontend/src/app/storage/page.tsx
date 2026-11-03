@@ -430,7 +430,7 @@ export default function StorageManagerPage() {
                 Virtual In-App Recycle Bin
               </span>
               <span className="text-amber-700 dark:text-amber-300 text-[11px]">
-                Files deleted within Vellum can be restored back to your active session.
+                Files deleted within TWOOLKIT can be restored back to your active session.
               </span>
             </div>
             {trash.length > 0 && (
