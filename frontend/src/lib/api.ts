@@ -68,7 +68,8 @@ function uploadJob(
     files.forEach((f, i) => fd.append("files", f, names[i]));
     const xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/jobs");
-    xhr.setRequestHeader("X-Cloud-Consent", "granted");
+    const consent = useSettings.getState().cloudConsent;
+    xhr.setRequestHeader("X-Cloud-Consent", consent ? "granted" : "denied");
     xhr.responseType = "json";
     xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded, e.total);
     xhr.onload = () => {
