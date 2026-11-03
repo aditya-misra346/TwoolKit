@@ -52,13 +52,25 @@ const FORMAT_MATRIX: Record<string, string[]> = {
 export default function DocumentConverterPage() {
   const [files, setFiles] = useState<StagedFile[]>([]);
   const [targetFormat, setTargetFormat] = useState<string>("pdf");
+  const [showConsentModal, setShowConsentModal] = useState(false);
   const { enqueue, setDrawer } = useQueue();
+  const { cloudConsent } = useSettings();
 
   const primaryExt = files.length > 0 ? extOf(files[0].name) : "docx";
   const availableTargets = FORMAT_MATRIX[primaryExt] || ["pdf"];
 
   const handleRunConversion = () => {
     if (files.length === 0) return;
+
+    const ext = extOf(files[0].name);
+    const isDataNative =
+      ["csv", "tsv", "json", "xml", "md"].includes(ext) &&
+      ["tsv", "json", "xml", "csv", "xlsx", "md", "html"].includes(targetFormat);
+
+    if (!isDataNative && !cloudConsent) {
+      setShowConsentModal(true);
+      return;
+    }
 
     enqueue(
       {
@@ -185,6 +197,15 @@ export default function DocumentConverterPage() {
           </div>
         </div>
       )}
+      {/* Consent Modal for Server Processing */}
+      <ConsentModal
+        isOpen={showConsentModal}
+        onClose={() => setShowConsentModal(false)}
+        onConfirm={() => {
+          setShowConsentModal(false);
+          handleRunConversion();
+        }}
+      />
     </div>
   );
 }
