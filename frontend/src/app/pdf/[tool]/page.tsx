@@ -505,6 +505,171 @@ export default function DedicatedPdfToolPage({ params }: Props) {
       return;
     }
 
+    // 16. Protect PDF (Enterprise AES-256 with In-Browser & Automatic Failover)
+    if (toolSlug === "protect") {
+      if (!password) {
+        setValidationError("Please enter a password to protect your document.");
+        return;
+      }
+      if (password !== confirmPassword) {
+        setValidationError("Passwords do not match. Please verify and re-enter your password.");
+        return;
+      }
+      setValidationError(null);
+
+      // If user selected server mode but hasn't consented yet, show consent dialog
+      if (protectEngine === "server" && !cloudConsent) {
+        setShowConsentModal(true);
+        return;
+      }
+
+      enqueue(
+        { title: "Protect PDF", tool: "pdf-protect", kind: "pdf", statKind: "pdf" },
+        files.map((f) => ({
+          label: f.name,
+          inputSize: f.size,
+          engine: protectEngine,
+          run: async (ctx) => {
+            if (protectEngine === "server") {
+              try {
+                ctx.progress(0.2, "Sending document to server for AES-256 encryption");
+                const res = await runServerJob(
+                  "pdf.protect",
+                  [f.file],
+                  [f.name],
+                  {
+                    userPassword: password,
+                    ownerPassword: ownerPassword || password,
+                    allowPrint: allowPrinting,
+                    allowCopy: allowCopying,
+                    allowModify: allowModifying,
+                  },
+                  ctx.signal,
+                  (p, s) => ctx.progress(p, s)
+                );
+                return { outputs: res.files, warnings: res.warnings };
+              } catch (err: any) {
+                // If server is not reachable, down, or requires local fallback
+                const isServerUnavailable =
+                  err?.status === 404 ||
+                  err?.status === 428 ||
+                  err?.status === 503 ||
+                  err?.status === 0 ||
+                  /active backend service|Server processing is turned off|not reach|disappeared|HTTP 404|404|NetworkError/i.test(
+                    err?.message || ""
+                  );
+                if (isServerUnavailable) {
+                  ctx.progress(0.4, "Switching to certified in-browser AES-256 encryption");
+                  const encryptedBlob = await protectPdfClient(
+                    f.file,
+                    {
+                      userPassword: password,
+                      ownerPassword: ownerPassword || password,
+                      allowPrinting,
+                      allowCopying,
+                      allowModifying,
+                      allowAnnotating,
+                    },
+                    (p, s) => ctx.progress(p, s)
+                  );
+                  return {
+                    outputs: [
+                      {
+                        name: f.name.replace(/\.pdf$/i, "-protected.pdf"),
+                        blob: encryptedBlob,
+                        note: "Certified AES-256 (in-browser fallback)",
+                      },
+                    ],
+                    warnings: ["Server was unavailable; protected locally in-browser with AES-256."],
+                  };
+                }
+                throw err;
+              }
+            } else {
+              // Local In-Browser AES-256 (100% Private, zero uploads)
+              ctx.progress(0.2, "Encrypting locally with certified AES-256");
+              const encryptedBlob = await protectPdfClient(
+                f.file,
+                {
+                  userPassword: password,
+                  ownerPassword: ownerPassword || password,
+                  allowPrinting,
+                  allowCopying,
+                  allowModifying,
+                  allowAnnotating,
+                },
+                (p, s) => ctx.progress(p, s)
+              );
+              return {
+                outputs: [
+                  {
+                    name: f.name.replace(/\.pdf$/i, "-protected.pdf"),
+                    blob: encryptedBlob,
+                    note: "Certified AES-256 encrypted",
+                  },
+                ],
+              };
+            }
+          },
+        }))
+      );
+      setDrawer(true);
+      return;
+    }
+
+    // 17. Unlock PDF (In-Browser Decryption with Server Failover)
+    if (toolSlug === "unlock") {
+      if (!password) {
+        setValidationError("Please enter the decryption password.");
+        return;
+      }
+      setValidationError(null);
+
+      enqueue(
+        { title: "Unlock PDF", tool: "pdf-unlock", kind: "pdf", statKind: "pdf" },
+        files.map((f) => ({
+          label: f.name,
+          inputSize: f.size,
+          engine: "local",
+          run: async (ctx) => {
+            ctx.progress(0.3, "Decrypting PDF document");
+            try {
+              const unlockedBlob = await unlockPdfClient(f.file, password, (p, s) => ctx.progress(p, s));
+              return {
+                outputs: [
+                  {
+                    name: f.name.replace(/\.pdf$/i, "-unlocked.pdf"),
+                    blob: unlockedBlob,
+                    note: "Decrypted & unrestricted",
+                  },
+                ],
+              };
+            } catch (err: any) {
+              if (cloudConsent) {
+                try {
+                  ctx.progress(0.5, "Trying server-side decryption engine");
+                  const res = await runServerJob(
+                    "pdf.unlock",
+                    [f.file],
+                    [f.name],
+                    { password },
+                    ctx.signal,
+                    (p, s) => ctx.progress(p, s)
+                  );
+                  return { outputs: res.files, warnings: res.warnings };
+                } catch {
+                  // Fall through to throw original error
+                }
+              }
+              throw err;
+            }
+          },
+        }))
+      );
+      setDrawer(true);
+      return;
+    }
+
     // -------------------------------------------------------------------------
     // HYBRID & SERVER OPERATIONS (With Instant Automatic Fallback!)
     // -------------------------------------------------------------------------
@@ -558,12 +723,6 @@ export default function DedicatedPdfToolPage({ params }: Props) {
         const repBlob = await repairPdfClient(file);
         return [{ name: file.name.replace(/\.pdf$/i, "-repaired.pdf"), blob: repBlob }];
       };
-    } else if (toolSlug === "protect") {
-      serverOp = "pdf.protect";
-      options = { userPassword: password, ownerPassword: ownerPassword || password };
-    } else if (toolSlug === "unlock") {
-      serverOp = "pdf.unlock";
-      options = { password };
     } else if (toolSlug === "extract-images") {
       serverOp = "pdf.extract_images";
       options = { password: password || undefined };
