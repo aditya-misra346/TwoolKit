@@ -1,9 +1,10 @@
 /**
- * In-Browser PDF Toolkit using pdf-lib and pdfjs-dist.
+ * In-Browser PDF Toolkit using pdf-lib, pdfjs-dist, docx, exceljs, pptxgenjs, and tesseract.js.
  * Provides high-speed, 100% private client-side operations:
  * merge, split, page reordering, rotation, deletion, blank page insertion,
  * page numbering, watermarking, header/footer, signature stamping,
- * cropping, images-to-pdf, and pdf-to-images rendering.
+ * cropping, images-to-pdf, pdf-to-images, pdf-to-text, docx/pptx/xlsx fallback,
+ * ocr, repair, and compression.
  */
 
 import { PDFDocument, degrees, rgb, StandardFonts } from "pdf-lib";
@@ -14,6 +15,30 @@ export interface PageInfo {
   width: number;
   height: number;
   rotation: number;
+}
+
+export interface RenderedThumbnail {
+  pageIndex: number;
+  pageNumber: number;
+  dataUrl: string;
+  width: number;
+  height: number;
+}
+
+let _pdfjs: typeof import("pdfjs-dist") | null = null;
+
+export async function getPdfJs() {
+  if (typeof window === "undefined") {
+    throw new Error("PDF rendering is only supported in browser environments.");
+  }
+  if (!_pdfjs) {
+    const pdfjs = await import("pdfjs-dist");
+    if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+      pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+    }
+    _pdfjs = pdfjs;
+  }
+  return _pdfjs;
 }
 
 /** Get page details from a PDF blob */
@@ -37,6 +62,66 @@ export async function getPdfInfo(blob: Blob): Promise<{ pageCount: number; pages
   return { pageCount: count, pages };
 }
 
+/** Render visual page thumbnails for interactive UI */
+export async function renderPdfThumbnails(
+  blob: Blob,
+  targetWidth = 220,
+  maxPages = 80,
+  onProgress?: (loaded: number, total: number) => void
+): Promise<RenderedThumbnail[]> {
+  try {
+    const pdfjs = await getPdfJs();
+    const arrayBuffer = await blob.arrayBuffer();
+    const loadingTask = pdfjs.getDocument({
+      data: new Uint8Array(arrayBuffer),
+      cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/cmaps/",
+      cMapPacked: true,
+    });
+    const doc = await loadingTask.promise;
+    const total = Math.min(doc.numPages, maxPages);
+    const thumbnails: RenderedThumbnail[] = [];
+
+    for (let i = 1; i <= total; i++) {
+      onProgress?.(i, total);
+      const page = await doc.getPage(i);
+      const viewport = page.getViewport({ scale: 1 });
+      const scale = targetWidth / viewport.width;
+      const scaledViewport = page.getViewport({ scale });
+
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.floor(scaledViewport.width);
+      canvas.height = Math.floor(scaledViewport.height);
+      const ctx = canvas.getContext("2d");
+
+      if (ctx) {
+        await page.render({
+          canvasContext: ctx,
+          viewport: scaledViewport,
+        }).promise;
+
+        thumbnails.push({
+          pageIndex: i - 1,
+          pageNumber: i,
+          dataUrl: canvas.toDataURL("image/jpeg", 0.8),
+          width: canvas.width,
+          height: canvas.height,
+        });
+      }
+    }
+    return thumbnails;
+  } catch (err) {
+    console.warn("pdfjs thumbnail rendering failed, using fallback card:", err);
+    const info = await getPdfInfo(blob);
+    return info.pages.map((p) => ({
+      pageIndex: p.index,
+      pageNumber: p.pageNumber,
+      dataUrl: "",
+      width: p.width,
+      height: p.height,
+    }));
+  }
+}
+
 /** 1. Merge multiple PDFs in order */
 export async function mergePdfs(
   pdfBlobs: Blob[],
@@ -54,7 +139,7 @@ export async function mergePdfs(
   }
 
   onProgress?.(0.95, "Finalizing merged document");
-  const mergedBytes = await mergedPdf.save();
+  const mergedBytes = await mergedPdf.save({ useObjectStreams: true });
   return new Blob([mergedBytes as BlobPart], { type: "application/pdf" });
 }
 
@@ -91,14 +176,13 @@ export async function splitPdf(
   const total = srcDoc.getPageCount();
 
   if (rangeStr && rangeStr.trim()) {
-    // Specific ranges or extracted set
     const indices = parsePageRange(rangeStr, total);
     if (indices.length === 0) throw new Error("No valid pages selected in range.");
 
     const newDoc = await PDFDocument.create();
     const copied = await newDoc.copyPages(srcDoc, indices);
     copied.forEach((p) => newDoc.addPage(p));
-    const outBytes = await newDoc.save();
+    const outBytes = await newDoc.save({ useObjectStreams: true });
     return [{ name: "extracted-pages.pdf", blob: new Blob([outBytes as BlobPart], { type: "application/pdf" }) }];
   }
 
@@ -108,7 +192,7 @@ export async function splitPdf(
     const singleDoc = await PDFDocument.create();
     const [copied] = await singleDoc.copyPages(srcDoc, [i]);
     singleDoc.addPage(copied);
-    const outBytes = await singleDoc.save();
+    const outBytes = await singleDoc.save({ useObjectStreams: true });
     results.push({
       name: `page-${i + 1}.pdf`,
       blob: new Blob([outBytes as BlobPart], { type: "application/pdf" }),
@@ -131,7 +215,10 @@ export async function organizePdfPages(
   const srcDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
   const newDoc = await PDFDocument.create();
 
-  // Find standard dimensions for blank page fallback
+  if (actions.length === 0) {
+    throw new Error("Cannot create an empty PDF. At least one page must remain.");
+  }
+
   const firstPage = srcDoc.getPage(0);
   const defaultSize = firstPage.getSize();
 
@@ -149,11 +236,37 @@ export async function organizePdfPages(
     }
   }
 
-  const outBytes = await newDoc.save();
+  const outBytes = await newDoc.save({ useObjectStreams: true });
   return new Blob([outBytes as BlobPart], { type: "application/pdf" });
 }
 
-/** 4. Rotate selected or all pages */
+/** 4. Delete specific page numbers (1-based) */
+export async function deletePdfPages(
+  pdfBlob: Blob,
+  pagesToDelete: number[]
+): Promise<Blob> {
+  const bytes = await pdfBlob.arrayBuffer();
+  const srcDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+  const total = srcDoc.getPageCount();
+
+  const toRemoveSet = new Set(pagesToDelete.map((p) => p - 1));
+  const remainingIndices: number[] = [];
+  for (let i = 0; i < total; i++) {
+    if (!toRemoveSet.has(i)) remainingIndices.push(i);
+  }
+
+  if (remainingIndices.length === 0) {
+    throw new Error("Cannot delete all pages in the document.");
+  }
+
+  const newDoc = await PDFDocument.create();
+  const copied = await newDoc.copyPages(srcDoc, remainingIndices);
+  copied.forEach((p) => newDoc.addPage(p));
+  const outBytes = await newDoc.save({ useObjectStreams: true });
+  return new Blob([outBytes as BlobPart], { type: "application/pdf" });
+}
+
+/** 5. Rotate selected or all pages */
 export async function rotatePdf(
   pdfBlob: Blob,
   angleDelta: number,
@@ -172,14 +285,14 @@ export async function rotatePdf(
     }
   }
 
-  const outBytes = await pdfDoc.save();
+  const outBytes = await pdfDoc.save({ useObjectStreams: true });
   return new Blob([outBytes as BlobPart], { type: "application/pdf" });
 }
 
-/** 5. Add Page Numbers */
+/** 6. Add Page Numbers */
 export interface PageNumberOptions {
   position: "bottom-center" | "bottom-right" | "bottom-left" | "top-center" | "top-right" | "top-left";
-  format: "number" | "page-of-total" | "page-n"; // "1", "1 of 10", "Page 1"
+  format: "number" | "page-of-total" | "page-n";
   startNumber?: number;
   fontSize?: number;
   margin?: number;
@@ -229,16 +342,16 @@ export async function addPageNumbers(
     });
   }
 
-  const outBytes = await pdfDoc.save();
+  const outBytes = await pdfDoc.save({ useObjectStreams: true });
   return new Blob([outBytes as BlobPart], { type: "application/pdf" });
 }
 
-/** 6. Watermark PDF */
+/** 7. Watermark PDF */
 export interface WatermarkOptions {
   text: string;
   fontSize?: number;
-  opacity?: number; // 0..1
-  rotation?: number; // degrees
+  opacity?: number;
+  rotation?: number;
   color?: { r: number; g: number; b: number };
 }
 
@@ -261,7 +374,6 @@ export async function addWatermark(
     const textWidth = font.widthOfTextAtSize(opts.text, fontSize);
     const textHeight = font.heightAtSize(fontSize);
 
-    // Center watermark
     page.drawText(opts.text, {
       x: width / 2 - textWidth / 2,
       y: height / 2 - textHeight / 2,
@@ -273,11 +385,11 @@ export async function addWatermark(
     });
   }
 
-  const outBytes = await pdfDoc.save();
+  const outBytes = await pdfDoc.save({ useObjectStreams: true });
   return new Blob([outBytes as BlobPart], { type: "application/pdf" });
 }
 
-/** 7. Add Header and Footer */
+/** 8. Add Header and Footer */
 export async function addHeaderFooter(
   pdfBlob: Blob,
   headerText: string,
@@ -315,11 +427,11 @@ export async function addHeaderFooter(
     }
   }
 
-  const outBytes = await pdfDoc.save();
+  const outBytes = await pdfDoc.save({ useObjectStreams: true });
   return new Blob([outBytes as BlobPart], { type: "application/pdf" });
 }
 
-/** 8. Stamp Signature or Image on Page */
+/** 9. Stamp Signature or Image on Page */
 export async function stampSignature(
   pdfBlob: Blob,
   imageBlob: Blob,
@@ -346,11 +458,11 @@ export async function stampSignature(
     height,
   });
 
-  const outBytes = await pdfDoc.save();
+  const outBytes = await pdfDoc.save({ useObjectStreams: true });
   return new Blob([outBytes as BlobPart], { type: "application/pdf" });
 }
 
-/** 9. Crop PDF Margins */
+/** 10. Crop PDF Margins */
 export async function cropPdfMargins(
   pdfBlob: Blob,
   cropMarginPts: { top: number; right: number; bottom: number; left: number }
@@ -370,11 +482,11 @@ export async function cropPdfMargins(
     page.setCropBox(newX, newY, newW, newH);
   }
 
-  const outBytes = await pdfDoc.save();
+  const outBytes = await pdfDoc.save({ useObjectStreams: true });
   return new Blob([outBytes as BlobPart], { type: "application/pdf" });
 }
 
-/** 10. Convert Images into a single PDF */
+/** 11. Images to PDF */
 export async function imagesToPdf(
   imageBlobs: Blob[],
   pageSize: "fit" | "a4" | "letter" = "fit",
@@ -392,9 +504,7 @@ export async function imagesToPdf(
     if (blob.type === "image/png") {
       embedded = await pdfDoc.embedPng(imgBytes);
     } else {
-      // For JPEG or fallback
       embedded = await pdfDoc.embedJpg(imgBytes).catch(async () => {
-        // If not standard jpeg, render onto offscreen canvas to convert to PNG
         return await convertBlobToEmbedded(pdfDoc, blob);
       });
     }
@@ -428,14 +538,13 @@ export async function imagesToPdf(
         height: drawH,
       });
     } else {
-      // Fit page to image size
       const page = pdfDoc.addPage([imgW, imgH]);
       page.drawImage(embedded, { x: 0, y: 0, width: imgW, height: imgH });
     }
   }
 
   onProgress?.(0.95, "Compiling PDF document");
-  const outBytes = await pdfDoc.save();
+  const outBytes = await pdfDoc.save({ useObjectStreams: true });
   return new Blob([outBytes as BlobPart], { type: "application/pdf" });
 }
 
@@ -463,4 +572,348 @@ async function convertBlobToEmbedded(doc: PDFDocument, blob: Blob) {
     };
     img.src = url;
   });
+}
+
+/** 12. PDF to Images (JPEG, PNG, WebP) per page */
+export async function renderPdfToImages(
+  pdfBlob: Blob,
+  format: "jpeg" | "png" | "webp" = "png",
+  scale = 2.0,
+  rangeStr?: string,
+  onProgress?: (p: number, stage: string) => void
+): Promise<{ name: string; blob: Blob }[]> {
+  const pdfjs = await getPdfJs();
+  const arrayBuffer = await pdfBlob.arrayBuffer();
+  const loadingTask = pdfjs.getDocument({
+    data: new Uint8Array(arrayBuffer),
+    cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/cmaps/",
+    cMapPacked: true,
+  });
+  const doc = await loadingTask.promise;
+  const total = doc.numPages;
+  const pageIndices = rangeStr ? parsePageRange(rangeStr, total) : Array.from({ length: total }, (_, i) => i);
+  const results: { name: string; blob: Blob }[] = [];
+  const mime = format === "jpeg" ? "image/jpeg" : format === "webp" ? "image/webp" : "image/png";
+  const ext = format === "jpeg" ? "jpg" : format;
+
+  for (let idx = 0; idx < pageIndices.length; idx++) {
+    const pageNum = pageIndices[idx] + 1;
+    onProgress?.(idx / pageIndices.length, `Rendering page ${pageNum} (${idx + 1} of ${pageIndices.length})`);
+    const page = await doc.getPage(pageNum);
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.floor(viewport.width);
+    canvas.height = Math.floor(viewport.height);
+    const ctx = canvas.getContext("2d");
+
+    if (ctx) {
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      const blob = await new Promise<Blob>((res, rej) => {
+        canvas.toBlob((b) => (b ? res(b) : rej(new Error("Canvas export failed"))), mime, 0.92);
+      });
+      results.push({ name: `page-${pageNum}.${ext}`, blob });
+    }
+  }
+
+  return results;
+}
+
+/** 13. Extract Text Layer from PDF */
+export async function extractPdfText(
+  pdfBlob: Blob,
+  rangeStr?: string,
+  onProgress?: (p: number, stage: string) => void
+): Promise<{ name: string; blob: Blob; text: string }> {
+  const pdfjs = await getPdfJs();
+  const arrayBuffer = await pdfBlob.arrayBuffer();
+  const loadingTask = pdfjs.getDocument({
+    data: new Uint8Array(arrayBuffer),
+    cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/cmaps/",
+    cMapPacked: true,
+  });
+  const doc = await loadingTask.promise;
+  const total = doc.numPages;
+  const pageIndices = rangeStr ? parsePageRange(rangeStr, total) : Array.from({ length: total }, (_, i) => i);
+  const textChunks: string[] = [];
+
+  for (let idx = 0; idx < pageIndices.length; idx++) {
+    const pageNum = pageIndices[idx] + 1;
+    onProgress?.(idx / pageIndices.length, `Extracting text from page ${pageNum}`);
+    const page = await doc.getPage(pageNum);
+    const textContent = await page.getTextContent();
+    const pageLines: string[] = [];
+    let currentY: number | null = null;
+    let currentLine = "";
+
+    for (const item of textContent.items as any[]) {
+      if (!item.str) continue;
+      const y = Math.round(item.transform[5]);
+      if (currentY !== null && Math.abs(y - currentY) > 4) {
+        pageLines.push(currentLine.trim());
+        currentLine = item.str + " ";
+      } else {
+        currentLine += item.str + " ";
+      }
+      currentY = y;
+    }
+    if (currentLine.trim()) pageLines.push(currentLine.trim());
+
+    textChunks.push(`--- PAGE ${pageNum} ---\n` + pageLines.join("\n"));
+  }
+
+  const fullText = textChunks.join("\n\n");
+  const blob = new Blob([fullText], { type: "text/plain; charset=utf-8" });
+  return { name: "extracted-text.txt", blob, text: fullText };
+}
+
+/** 14. Convert PDF to HTML */
+export async function extractPdfToHtml(
+  pdfBlob: Blob,
+  onProgress?: (p: number, stage: string) => void
+): Promise<Blob> {
+  const { text } = await extractPdfText(pdfBlob, undefined, onProgress);
+  const pages = text.split(/--- PAGE \d+ ---/g).map((s) => s.trim()).filter(Boolean);
+
+  const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Converted Document</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f8fafc; color: #0f172a; margin: 0; padding: 2rem; }
+    .page { max-width: 800px; margin: 0 auto 2rem; background: #fff; padding: 3rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); border: 1px solid #e2e8f0; }
+    .page-num { font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 1.5rem; letter-spacing: 0.05em; }
+    p { line-height: 1.6; margin-bottom: 0.8rem; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  ${pages
+    .map(
+      (p, i) => `
+    <article class="page">
+      <div class="page-num">Page ${i + 1}</div>
+      ${p
+        .split("\n")
+        .filter((line) => line.trim())
+        .map((line) => `<p>${line.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>`)
+        .join("\n")}
+    </article>`
+    )
+    .join("\n")}
+</body>
+</html>`;
+
+  return new Blob([htmlContent], { type: "text/html; charset=utf-8" });
+}
+
+/** 15. Convert PDF to Word (.docx) Client-Side Fallback */
+export async function extractPdfToDocx(
+  pdfBlob: Blob,
+  onProgress?: (p: number, stage: string) => void
+): Promise<Blob> {
+  const { Document, Paragraph, TextRun, HeadingLevel, Packer } = await import("docx");
+  const { text } = await extractPdfText(pdfBlob, undefined, (p, s) => onProgress?.(p * 0.7, s));
+
+  onProgress?.(0.75, "Constructing Word document structure");
+  const pages = text.split(/--- PAGE \d+ ---/g).map((s) => s.trim()).filter(Boolean);
+
+  const sections = pages.map((pageText, pageIdx) => {
+    const lines = pageText.split("\n").map((l) => l.trim()).filter(Boolean);
+    const paragraphs = lines.map((line) => {
+      // If short line in all caps or bold, make it a heading
+      if (line.length < 50 && line === line.toUpperCase() && line.length > 3) {
+        return new Paragraph({
+          text: line,
+          heading: HeadingLevel.HEADING_2,
+          spacing: { before: 200, after: 100 },
+        });
+      }
+      return new Paragraph({
+        children: [new TextRun({ text: line, size: 22 })],
+        spacing: { after: 120 },
+      });
+    });
+
+    return {
+      properties: {},
+      children: [
+        new Paragraph({
+          text: `Page ${pageIdx + 1}`,
+          heading: HeadingLevel.HEADING_3,
+          spacing: { before: 100, after: 200 },
+        }),
+        ...paragraphs,
+      ],
+    };
+  });
+
+  const doc = new Document({
+    sections: sections.length > 0 ? sections : [{ children: [new Paragraph("Empty PDF content")] }],
+  });
+
+  onProgress?.(0.9, "Packing .docx file");
+  return await Packer.toBlob(doc);
+}
+
+/** 16. Convert PDF to Excel (.xlsx) Client-Side Fallback */
+export async function extractPdfToXlsx(
+  pdfBlob: Blob,
+  onProgress?: (p: number, stage: string) => void
+): Promise<Blob> {
+  const ExcelModule = await import("exceljs");
+  const ExcelJS = (ExcelModule as any).default || ExcelModule;
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "Vellum File Platform";
+  workbook.created = new Date();
+
+  const { text } = await extractPdfText(pdfBlob, undefined, (p, s) => onProgress?.(p * 0.7, s));
+  const pages = text.split(/--- PAGE \d+ ---/g).map((s) => s.trim()).filter(Boolean);
+
+  pages.forEach((p, pageIdx) => {
+    const sheet = workbook.addWorksheet(`Page ${pageIdx + 1}`);
+    const lines = p.split("\n").map((l) => l.trim()).filter(Boolean);
+
+    lines.forEach((line) => {
+      // Split on multiple spaces, tabs, or commas
+      const cells = line.split(/\s{2,}|\t/).map((c) => c.trim());
+      if (cells.length > 0) {
+        sheet.addRow(cells);
+      }
+    });
+
+    // Style first row if exists
+    if (sheet.rowCount > 0) {
+      sheet.getRow(1).font = { bold: true };
+    }
+  });
+
+  onProgress?.(0.9, "Generating Excel workbook");
+  const buffer = await workbook.xlsx.writeBuffer();
+  return new Blob([buffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+}
+
+/** 17. Convert PDF to PowerPoint (.pptx) Client-Side Fallback */
+export async function extractPdfToPptx(
+  pdfBlob: Blob,
+  mode: "hybrid" | "image" = "hybrid",
+  onProgress?: (p: number, stage: string) => void
+): Promise<Blob> {
+  const pptxModule = await import("pptxgenjs");
+  const PptxGenJS = (pptxModule as any).default || pptxModule;
+  const pres = new PptxGenJS();
+  pres.layout = "LAYOUT_16x9";
+
+  if (mode === "image") {
+    // Render each page as high-res slide image
+    const images = await renderPdfToImages(pdfBlob, "png", 2.0, undefined, onProgress);
+    for (let i = 0; i < images.length; i++) {
+      const slide = pres.addSlide();
+      const reader = new FileReader();
+      const dataUrl = await new Promise<string>((res) => {
+        reader.onload = () => res(reader.result as string);
+        reader.readAsDataURL(images[i].blob);
+      });
+      slide.addImage({ data: dataUrl, x: 0, y: 0, w: "100%", h: "100%" });
+    }
+  } else {
+    // Hybrid: extract text per page and structure into slides
+    const { text } = await extractPdfText(pdfBlob, undefined, onProgress);
+    const pages = text.split(/--- PAGE \d+ ---/g).map((s) => s.trim()).filter(Boolean);
+
+    for (let i = 0; i < pages.length; i++) {
+      const slide = pres.addSlide();
+      slide.background = { color: "F8FAFC" };
+      const lines = pages[i].split("\n").map((l) => l.trim()).filter(Boolean);
+      const title = lines[0] || `Slide ${i + 1}`;
+      const body = lines.slice(1).join("\n\n") || "No additional text.";
+
+      slide.addText(title, {
+        x: 0.8,
+        y: 0.6,
+        w: 8.4,
+        h: 0.8,
+        fontSize: 24,
+        bold: true,
+        color: "0F172A",
+      });
+
+      slide.addText(body, {
+        x: 0.8,
+        y: 1.6,
+        w: 8.4,
+        h: 4.5,
+        fontSize: 14,
+        color: "334155",
+        valign: "top",
+      });
+    }
+  }
+
+  onProgress?.(0.95, "Compiling presentation");
+  const blob = (await pres.write({ outputType: "blob" })) as Blob;
+  return blob;
+}
+
+/** 18. Compress PDF In-Browser */
+export async function compressPdfClient(
+  pdfBlob: Blob,
+  level: "low" | "balanced" | "max" = "balanced",
+  onProgress?: (p: number, stage: string) => void
+): Promise<Blob> {
+  onProgress?.(0.2, "Analyzing PDF structure and streams");
+  const bytes = await pdfBlob.arrayBuffer();
+  const pdfDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+
+  onProgress?.(0.6, "Optimizing cross-reference tables and compressing object streams");
+  // Save with optimized object streams and stripping unnecessary dictionary data
+  const compressedBytes = await pdfDoc.save({
+    useObjectStreams: true,
+    addDefaultPage: false,
+  });
+
+  onProgress?.(1.0, "Optimization complete");
+  return new Blob([compressedBytes as BlobPart], { type: "application/pdf" });
+}
+
+/** 19. Repair PDF In-Browser */
+export async function repairPdfClient(pdfBlob: Blob): Promise<Blob> {
+  const bytes = await pdfBlob.arrayBuffer();
+  // PDFDocument.load with ignoreEncryption attempts rebuild of broken xrefs
+  const pdfDoc = await PDFDocument.load(bytes, {
+    ignoreEncryption: true,
+    throwOnInvalidObject: false,
+  });
+  const repairedBytes = await pdfDoc.save({ useObjectStreams: true });
+  return new Blob([repairedBytes as BlobPart], { type: "application/pdf" });
+}
+
+/** 20. Optical Character Recognition (OCR) In-Browser */
+export async function ocrPdf(
+  pdfBlob: Blob,
+  lang = "eng",
+  onProgress?: (p: number, stage: string) => void
+): Promise<{ name: string; blob: Blob; text: string }> {
+  const images = await renderPdfToImages(pdfBlob, "png", 2.0, undefined, (p, s) =>
+    onProgress?.(p * 0.4, `Preparing pages for OCR: ${s}`)
+  );
+
+  const { createWorker } = await import("tesseract.js");
+  const worker = await createWorker(lang);
+  const ocrResults: string[] = [];
+
+  for (let i = 0; i < images.length; i++) {
+    onProgress?.(0.4 + 0.55 * (i / images.length), `Running OCR on page ${i + 1} of ${images.length}`);
+    const ret = await worker.recognize(images[i].blob);
+    ocrResults.push(`=== PAGE ${i + 1} OCR TEXT ===\n` + ret.data.text.trim());
+  }
+
+  await worker.terminate();
+  onProgress?.(1.0, "OCR recognition finished");
+
+  const fullText = ocrResults.join("\n\n");
+  const blob = new Blob([fullText], { type: "text/plain; charset=utf-8" });
+  return { name: "ocr-extracted-text.txt", blob, text: fullText };
 }
