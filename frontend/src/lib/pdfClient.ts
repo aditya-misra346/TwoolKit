@@ -29,8 +29,11 @@ let _pdfjs: typeof import("pdfjs-dist") | null = null;
 
 export async function getPdfJs() {
   if (!_pdfjs) {
-    const pdfjs = await import("pdfjs-dist");
-    if (typeof window !== "undefined" && !pdfjs.GlobalWorkerOptions.workerSrc) {
+    const isNode = typeof window === "undefined";
+    const pdfjs = isNode
+      ? await import("pdfjs-dist/legacy/build/pdf.mjs")
+      : await import("pdfjs-dist");
+    if (!isNode && !pdfjs.GlobalWorkerOptions.workerSrc) {
       pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
     }
     _pdfjs = pdfjs;
