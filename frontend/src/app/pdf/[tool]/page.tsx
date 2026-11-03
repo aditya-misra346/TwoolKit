@@ -565,7 +565,7 @@ export default function DedicatedPdfToolPage({ params }: Props) {
       files.map((f) => ({
         label: f.name,
         inputSize: f.size,
-        engine: fallbackFn ? "hybrid" : "server",
+        engine: fallbackFn ? "local" : "server",
         run: async (ctx) => {
           try {
             const res = await runServerJob(serverOp, [f.file], [f.name], options, ctx.signal, (p, s) =>
