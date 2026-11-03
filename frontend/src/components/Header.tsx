@@ -5,6 +5,7 @@ import { useSettings } from "@/stores/settings";
 import { useQueue } from "@/stores/tasks";
 import { CommandPalette } from "./CommandPalette";
 import { ConsentModal } from "./ConsentModal";
+import { Logo } from "./Logo";
 import {
   Search,
   Moon,
@@ -54,6 +55,10 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
           >
             <Menu className="w-5 h-5" />
           </button>
+
+          <div className="md:hidden">
+            <Logo variant="compact" size="xs" />
+          </div>
 
           <button
             onClick={() => setSearchOpen(true)}
