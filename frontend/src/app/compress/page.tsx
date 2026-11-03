@@ -4,6 +4,7 @@ import { useState } from "react";
 import { DropZone, type StagedFile } from "@/components/DropZone";
 import { useQueue } from "@/stores/tasks";
 import { runServerJob } from "@/lib/api";
+import { compressPdfClient } from "@/lib/pdfClient";
 import { convertAndOptimizeImage } from "@/lib/imageClient";
 import { createZip } from "@/lib/archiveClient";
 import { formatBytes, extOf } from "@/lib/fileTypes";
@@ -44,12 +45,27 @@ export default function FileCompressorPage() {
         run: async (ctx) => {
           const ext = extOf(f.name);
 
-          // 1. PDF -> Use PyMuPDF rewrite_images engine
+          // 1. PDF -> Use PyMuPDF rewrite_images engine with automatic client fallback
           if (ext === "pdf") {
-            const res = await runServerJob("pdf.compress", [f.file], [f.name], { level: tier }, ctx.signal, (p, s) =>
-              ctx.progress(p, s)
-            );
-            return { outputs: res.files, warnings: res.warnings };
+            try {
+              const res = await runServerJob("pdf.compress", [f.file], [f.name], { level: tier }, ctx.signal, (p, s) =>
+                ctx.progress(p, s)
+              );
+              return { outputs: res.files, warnings: res.warnings };
+            } catch {
+              ctx.progress(0.4, "Optimizing PDF structure locally in browser");
+              const clientBlob = await compressPdfClient(f.file, tier);
+              const base = f.name.replace(/\.pdf$/i, "");
+              return {
+                outputs: [
+                  {
+                    name: `${base}-compressed.pdf`,
+                    blob: clientBlob,
+                    note: `In-browser compressed (${formatBytes(clientBlob.size)})`,
+                  },
+                ],
+              };
+            }
           }
 
           // 2. Images -> In-browser high-efficiency compression
