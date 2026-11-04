@@ -117,6 +117,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { id: "compress", label: "File Compressor", href: "/compress", icon: Minimize2 },
       { id: "assistant", label: "File Assistant", href: "/assistant", icon: Sparkles },
+      { id: "brand", label: "Brand Identity", href: "/brand", icon: Sparkles },
       { id: "settings", label: "Settings", href: "/settings", icon: Settings },
     ],
   },
