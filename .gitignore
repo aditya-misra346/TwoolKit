@@ -38,3 +38,11 @@ Thumbs.db
 .env
 .vercel
 .env*
+
+# Rust / Tauri Desktop build artifacts & signing keys
+desktop/src-tauri/target/
+desktop/node_modules/
+*.key
+*.pem
+*.p12
+*.pfx

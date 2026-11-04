@@ -1,0 +1,136 @@
+name: TwoolKit Desktop — Cross-Platform Build & Auto-Update Release
+
+on:
+  push:
+    tags:
+      - 'desktop-v*'
+    branches:
+      - main
+    paths:
+      - 'desktop/**'
+      - 'frontend/src/lib/desktop.ts'
+      - 'frontend/src/components/DesktopBridgeProvider.tsx'
+      - 'frontend/src/app/api/desktop-manifest/**'
+      - '.github/workflows/desktop-release.yml'
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish signed installers and latest.json to GitHub Releases'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rust-quality-gate:
+    name: Rust Fmt, Clippy & Security Unit Tests
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: desktop/src-tauri
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Cargo registry and target
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: 'desktop/src-tauri -> target'
+
+      - name: Check formatting (cargo fmt)
+        run: cargo fmt --all -- --check
+
+      - name: Run Clippy lints (cargo clippy)
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Execute Rust security, filesystem & sync unit tests
+        run: cargo test --verbose
+
+  build-desktop-matrix:
+    name: Build Desktop (${{ matrix.label }})
+    needs: rust-quality-gate
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: macOS Apple Silicon (aarch64)
+            os: macos-latest
+            target: aarch64-apple-darwin
+            args: --target aarch64-apple-darwin
+          - label: macOS Intel (x86_64)
+            os: macos-latest
+            target: x86_64-apple-darwin
+            args: --target x86_64-apple-darwin
+          - label: Windows x64 (NSIS + MSI)
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            args: --target x86_64-pc-windows-msvc
+          - label: Linux x64 (AppImage + DEB + RPM)
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            args: --target x86_64-unknown-linux-gnu
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux native WebKitGTK & AppImage dependencies
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libgtk-3-dev \
+            libssl-dev \
+            rpm \
+            file
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Cargo build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: 'desktop/src-tauri -> target'
+
+      - name: Compile TwoolKit Desktop binary
+        working-directory: desktop/src-tauri
+        run: cargo build --release ${{ matrix.args }}
+
+      - name: Package & Publish Signed Release (Tag / Dispatch)
+        if: startsWith(github.ref, 'refs/tags/desktop-v') || github.event.inputs.publish_release == 'true'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: desktop
+          tagName: desktop-v__VERSION__
+          releaseName: 'TwoolKit Desktop v__VERSION__'
+          releaseBody: 'Automated cross-platform release of TwoolKit Desktop with Ed25519 update signatures (`latest.json`).'
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}

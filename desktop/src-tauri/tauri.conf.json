@@ -1,0 +1,60 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "TwoolKit",
+  "version": "1.2.0",
+  "identifier": "app.vercel.twoolkit.desktop",
+  "build": {
+    "beforeDevCommand": "npm --prefix ../frontend run dev",
+    "devUrl": "http://localhost:3000",
+    "beforeBuildCommand": "npm --prefix ../frontend run build",
+    "frontendDist": "../dist-fallback"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "label": "main",
+        "title": "TwoolKit — Universal File Intelligence & Conversion Studio",
+        "width": 1360,
+        "height": 860,
+        "minWidth": 960,
+        "minHeight": 640,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self' https://twoolkit.vercel.app http://127.0.0.1:3000 http://localhost:3000; connect-src 'self' https://twoolkit.vercel.app http://127.0.0.1:8000 http://localhost:8000 https://github.com https://objects.githubusercontent.com; img-src 'self' data: blob: https://twoolkit.vercel.app; style-src 'self' 'unsafe-inline' https://twoolkit.vercel.app; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://twoolkit.vercel.app; frame-ancestors 'none'; object-src 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["dmg", "app", "msi", "nsis", "appimage", "deb", "rpm"],
+    "createUpdaterArtifacts": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "publisher": "Aditya Misra",
+    "category": "Productivity",
+    "shortDescription": "All-in-one PDF, document conversion, image studio, file scanner & storage manager.",
+    "longDescription": "TwoolKit Desktop combines 48 local and hybrid document, PDF, presentation, image, and storage tools with native OS filesystem integration and automatic synchronization with https://twoolkit.vercel.app.",
+    "macOS": {
+      "minimumSystemVersion": "12.0"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "dialog": false,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhGNkI0RTRDMkFBMDFGRkUKUldUK0Q2QXFUVTlyajZYRUpXOWFqU1haT2xmcW12TzBuU1l1Vm50U1dHVnBLVDFZSWtwc1d6T3AK",
+      "endpoints": [
+        "https://github.com/aditya-misra346/TwoolKit/releases/latest/download/latest.json"
+      ]
+    }
+  }
+}

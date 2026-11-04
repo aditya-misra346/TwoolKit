@@ -12,12 +12,29 @@ const nextConfig: NextConfig = {
     return {
       beforeFiles: [
         {
+          source: "/api/health",
+          destination: `${backendUrl}/api/health`,
+        },
+        {
+          source: "/api/capabilities",
+          destination: `${backendUrl}/api/capabilities`,
+        },
+        {
+          source: "/api/jobs",
+          destination: `${backendUrl}/api/jobs`,
+        },
+        {
+          source: "/api/jobs/:path*",
+          destination: `${backendUrl}/api/jobs/:path*`,
+        },
+      ],
+      afterFiles: [],
+      fallback: [
+        {
           source: "/api/:path*",
           destination: `${backendUrl}/api/:path*`,
         },
       ],
-      afterFiles: [],
-      fallback: [],
     };
   },
   turbopack: {
