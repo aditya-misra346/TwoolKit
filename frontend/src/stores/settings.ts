@@ -39,7 +39,7 @@ export interface Settings {
 
 const defaults: Settings = {
   profileName: "",
-  theme: "system",
+  theme: "dark",
   motion: "system",
   sidebarCollapsed: false,
   cloudConsent: false,
