@@ -14,14 +14,15 @@
     "windows": [
       {
         "label": "main",
-        "title": "TwoolKit — Universal File Intelligence & Conversion Studio",
+        "title": "TwoolKit \u2014 Universal File Intelligence & Conversion Studio",
         "width": 1360,
         "height": 860,
         "minWidth": 960,
         "minHeight": 640,
         "resizable": true,
         "fullscreen": false,
-        "center": true
+        "center": true,
+        "url": "https://twoolkit.vercel.app"
       }
     ],
     "security": {
@@ -30,7 +31,15 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["dmg", "app", "msi", "nsis", "appimage", "deb", "rpm"],
+    "targets": [
+      "dmg",
+      "app",
+      "msi",
+      "nsis",
+      "appimage",
+      "deb",
+      "rpm"
+    ],
     "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
