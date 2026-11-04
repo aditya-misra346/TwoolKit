@@ -273,12 +273,12 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Section 3: Authorized Local Folders & Scoped Permissions */}
+        {/* Section 2: Authorized Local Folders & Scoped Permissions */}
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
               <FolderCheck className="w-4 h-4 text-indigo-500" />
-              <span>3. Authorized Folders & Scoped Filesystem Access</span>
+              <span>2. Authorized Folders & Scoped Filesystem Access</span>
             </span>
             <button
               type="button"
