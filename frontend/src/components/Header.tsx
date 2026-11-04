@@ -104,39 +104,6 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
               </span>
             )}
           </button>
-
-          {/* 3-Way Segmented Theme Switcher (Light / Dark / System) */}
-          <div
-            role="group"
-            aria-label="Theme mode"
-            className="flex items-center p-0.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80"
-          >
-            {[
-              { id: "light" as const, icon: Sun, title: "Light theme" },
-              { id: "dark" as const, icon: Moon, title: "Dark theme" },
-              { id: "system" as const, icon: Laptop, title: "System theme" },
-            ].map((item) => {
-              const Icon = item.icon;
-              const active = theme === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setThemeMode(item.id)}
-                  title={item.title}
-                  aria-label={item.title}
-                  className={clsx(
-                    "p-1.5 rounded-lg transition-all cursor-pointer",
-                    active
-                      ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs"
-                      : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                  )}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                </button>
-              );
-            })}
-          </div>
         </div>
       </header>
 
