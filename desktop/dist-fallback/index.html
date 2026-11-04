@@ -3,133 +3,350 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TwoolKit Desktop — Workspace Loader</title>
+  <title>TwoolKit Desktop — Reconnecting</title>
   <style>
     :root {
       color-scheme: dark;
     }
+    * {
+      box-sizing: border-box;
+    }
     body {
       margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #090b10;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: radial-gradient(circle at 50% 20%, #111827 0%, #06080e 100%);
       color: #f8fafc;
       display: flex;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
+      padding: 20px;
     }
     .card {
-      max-width: 480px;
-      width: 90%;
-      background: #0f141f;
-      border: 1px solid #1e2638;
-      border-radius: 20px;
-      padding: 28px;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      max-width: 520px;
+      width: 100%;
+      background: rgba(15, 20, 31, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 24px;
+      padding: 36px 32px;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(37, 99, 235, 0.08);
       text-align: center;
     }
-    .logo {
-      width: 56px;
-      height: 56px;
-      margin: 0 auto 16px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, #2563eb, #06b6d4);
+    .logo-container {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 20px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 900;
-      font-size: 26px;
-      color: #fff;
+      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.35);
+    }
+    .logo-container svg {
+      width: 34px;
+      height: 34px;
+      color: #ffffff;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      color: #f87171;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #ef4444;
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .4; }
     }
     h1 {
-      margin: 0 0 8px;
-      font-size: 20px;
+      margin: 0 0 10px;
+      font-size: 22px;
+      font-weight: 700;
       letter-spacing: -0.02em;
+      color: #ffffff;
     }
-    p {
-      margin: 0 0 20px;
-      font-size: 13px;
+    p.description {
+      margin: 0 0 24px;
+      font-size: 14px;
       color: #94a3b8;
-      line-height: 1.5;
+      line-height: 1.6;
     }
-    .btn {
+    .status-panel {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 14px;
+      padding: 14px 18px;
+      margin-bottom: 24px;
+      font-size: 12px;
+      text-align: left;
+    }
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+    .status-row:last-child {
+      border-bottom: none;
+    }
+    .status-label {
+      color: #64748b;
+    }
+    .status-value {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-weight: 500;
+      color: #cbd5e1;
+    }
+    .btn-primary {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      padding: 10px 18px;
-      border-radius: 10px;
-      background: #2563eb;
-      color: #fff;
+      gap: 8px;
+      width: 100%;
+      padding: 12px 20px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #ffffff;
       font-weight: 600;
-      font-size: 13px;
-      text-decoration: none;
+      font-size: 14px;
       border: none;
       cursor: pointer;
-      margin: 4px;
+      box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35);
+      transition: all 0.2s ease;
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.45);
+      transform: translateY(-1px);
+    }
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #ffffff;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    details {
+      margin-top: 20px;
+      text-align: left;
+    }
+    summary {
+      font-size: 12px;
+      color: #64748b;
+      cursor: pointer;
+      user-select: none;
+      outline: none;
+    }
+    summary:hover {
+      color: #94a3b8;
+    }
+    .dev-panel {
+      margin-top: 10px;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      font-size: 12px;
     }
     .btn-secondary {
-      background: #161c2b;
-      color: #cbd5e1;
-      border: 1px solid #1e2638;
+      padding: 8px 12px;
+      font-size: 12px;
+      border-radius: 6px;
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      cursor: pointer;
     }
-    .status {
-      margin-top: 16px;
-      font-family: monospace;
-      font-size: 11px;
-      color: #60a5fa;
+    .btn-secondary:hover {
+      background: #334155;
+      color: #ffffff;
     }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="logo">T</div>
-    <h1>TwoolKit Desktop v1.2.0</h1>
-    <p id="desc">
-      Synchronizing with the live TwoolKit workspace...
-    </p>
-    <div>
-      <button class="btn" onclick="connectLive()">Launch Live Workspace</button>
-      <button class="btn btn-secondary" onclick="connectLocal()">Connect Localhost (3000)</button>
+    <div class="logo-container">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <path d="m9 15 2 2 4-4"/>
+      </svg>
     </div>
-    <div class="status" id="status">Checking connectivity...</div>
+
+    <div class="badge" id="badgeIndicator">
+      <span class="badge-dot"></span>
+      <span id="badgeText">Waiting for Connection</span>
+    </div>
+
+    <h1>TwoolKit Desktop</h1>
+    <p class="description" id="desc">
+      TwoolKit is attempting to connect to the live production workspace at <strong>https://twoolkit.vercel.app</strong>. Please verify your internet connection.
+    </p>
+
+    <div class="status-panel">
+      <div class="status-row">
+        <span class="status-label">Native Core</span>
+        <span class="status-value" style="color: #4ade80;">Active (TwoolKit v1.2.0)</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Workspace URL</span>
+        <span class="status-value" id="targetUrlDisplay">https://twoolkit.vercel.app</span>
+      </div>
+      <div class="status-row">
+        <span class="status-label">Connection State</span>
+        <span class="status-value" id="connState" style="color: #facc15;">Checking...</span>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="retryBtn" onclick="triggerRetry()">
+      <span class="spinner" id="btnSpinner" style="display: none;"></span>
+      <span id="btnText">Retry Connection Now</span>
+    </button>
+
+    <details>
+      <summary>Advanced / Developer Options</summary>
+      <div class="dev-panel">
+        <p style="margin: 0 0 8px; color: #64748b; font-size: 11px;">
+          If running a local development instance of TwoolKit:
+        </p>
+        <button class="btn-secondary" onclick="connectCustom('http://localhost:3000')">
+          Connect Localhost (3000)
+        </button>
+      </div>
+    </details>
   </div>
+
   <script>
     const LIVE_URL = "https://twoolkit.vercel.app";
-    const LOCAL_URL = "http://127.0.0.1:3000";
+    let isRetrying = false;
+    let pollInterval = 3000;
 
     async function probe(url) {
       try {
         const ctrl = new AbortController();
-        setTimeout(() => ctrl.abort(), 2500);
-        const r = await fetch(url + "/api/health", { signal: ctrl.signal, cache: "no-store" });
-        return r.ok;
-      } catch {
-        return false;
+        const timeoutId = setTimeout(() => ctrl.abort(), 2500);
+        // Direct root or health fetch with no-store
+        const res = await fetch(url + "/api/health", {
+          signal: ctrl.signal,
+          cache: "no-store",
+          headers: { "Accept": "application/json" }
+        });
+        clearTimeout(timeoutId);
+        return res.ok;
+      } catch (err) {
+        // Fallback probe to root URL
+        try {
+          const ctrl2 = new AbortController();
+          const timeoutId2 = setTimeout(() => ctrl2.abort(), 2000);
+          const rootRes = await fetch(url, {
+            signal: ctrl2.signal,
+            cache: "no-store",
+            mode: "no-cors"
+          });
+          clearTimeout(timeoutId2);
+          return true; // no-cors opaque response implies server reached
+        } catch {
+          return false;
+        }
       }
     }
 
-    async function connectLive() {
-      document.getElementById("status").textContent = "Connecting to " + LIVE_URL + "...";
-      window.location.replace(LIVE_URL);
-    }
+    async function triggerRetry() {
+      if (isRetrying) return;
+      isRetrying = true;
 
-    async function connectLocal() {
-      document.getElementById("status").textContent = "Connecting to " + LOCAL_URL + "...";
-      window.location.replace(LOCAL_URL);
-    }
+      const btn = document.getElementById("retryBtn");
+      const spinner = document.getElementById("btnSpinner");
+      const btnText = document.getElementById("btnText");
+      const connState = document.getElementById("connState");
 
-    (async () => {
-      if (await probe(LOCAL_URL)) {
-        window.location.replace(LOCAL_URL);
+      spinner.style.display = "inline-block";
+      btnText.textContent = "Connecting to TwoolKit...";
+      connState.textContent = "Probing workspace...";
+      connState.style.color = "#60a5fa";
+
+      // If running inside Tauri, try invoking the native retry command first
+      if (window.__TAURI_INTERNALS__?.invoke) {
+        try {
+          const connected = await window.__TAURI_INTERNALS__.invoke("retry_workspace_connection");
+          if (connected) {
+            connState.textContent = "Connected! Opening workspace...";
+            connState.style.color = "#4ade80";
+            return;
+          }
+        } catch (e) {
+          console.warn("Tauri retry command error:", e);
+        }
+      }
+
+      // Web/direct probe fallback
+      const ok = await probe(LIVE_URL);
+      if (ok) {
+        connState.textContent = "Workspace reachable! Loading...";
+        connState.style.color = "#4ade80";
+        setTimeout(() => {
+          window.location.replace(LIVE_URL);
+        }, 300);
         return;
       }
-      if (navigator.onLine && (await probe(LIVE_URL))) {
+
+      connState.textContent = "Unable to connect. Will retry automatically...";
+      connState.style.color = "#f87171";
+      spinner.style.display = "none";
+      btnText.textContent = "Retry Connection Now";
+      isRetrying = false;
+    }
+
+    function connectCustom(customUrl) {
+      window.location.replace(customUrl);
+    }
+
+    // Auto-reconnect when device comes online
+    window.addEventListener("online", () => {
+      document.getElementById("connState").textContent = "Network restored. Connecting...";
+      triggerRetry();
+    });
+
+    // Background exponential poll
+    async function startAutoPoll() {
+      if (await probe(LIVE_URL)) {
         window.location.replace(LIVE_URL);
         return;
       }
-      document.getElementById("desc").textContent =
-        "Offline Mode Detected. Start the local TwoolKit service on port 3000 or reconnect to synchronize with twoolkit.vercel.app.";
-      document.getElementById("status").textContent = "Offline · Native Rust Core Active";
+      pollInterval = Math.min(pollInterval * 1.5, 12000);
+      setTimeout(startAutoPoll, pollInterval);
+    }
+
+    // Initial check on load
+    (async () => {
+      setTimeout(startAutoPoll, 2000);
     })();
   </script>
 </body>
