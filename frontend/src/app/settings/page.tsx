@@ -147,7 +147,7 @@ export default function SettingsPage() {
             Platform Preferences & Update Center
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
-            Configure theme, desktop update channels, live website synchronization, authorized local folders, processing privacy, and secure credentials.
+            Configure desktop update channels, live website synchronization, authorized local folders, processing privacy, and secure credentials.
           </p>
         </div>
 
@@ -161,44 +161,12 @@ export default function SettingsPage() {
       </div>
 
       <div className="space-y-4">
-        {/* Section 1: Appearance & General */}
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs space-y-3">
-          <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider block">
-            1. Appearance & Interface Theme
-          </span>
-          <div className="grid grid-cols-3 gap-2.5 max-w-md">
-            {[
-              { id: "system", label: "System", icon: Laptop },
-              { id: "light", label: "Light", icon: Sun },
-              { id: "dark", label: "Dark", icon: Moon },
-            ].map((t) => {
-              const Icon = t.icon;
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => set({ theme: t.id as any })}
-                  className={clsx(
-                    "p-3 rounded-xl border text-center text-xs font-bold transition-all flex flex-col items-center gap-1.5 cursor-pointer",
-                    theme === t.id
-                      ? "border-blue-500 bg-blue-50 text-blue-900 dark:bg-blue-950/60 dark:text-blue-100 shadow-2xs"
-                      : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300"
-                  )}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span>{t.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Section 2: Updates & Live Website Synchronization Center (Phase 6, 7 & 11) */}
+        {/* Section 1: Updates & Live Website Synchronization Center */}
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
               <RefreshCw className="w-4 h-4 text-blue-500" />
-              <span>2. Updates & Live Website Synchronization</span>
+              <span>1. Updates & Live Website Synchronization</span>
             </span>
             <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold font-mono">
               v{runtimeInfo?.nativeVersion || "1.2.0"} · {runtimeInfo?.isDesktop ? "Native Tauri 2" : "Web Connected"}
