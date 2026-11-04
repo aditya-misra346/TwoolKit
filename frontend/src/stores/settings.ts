@@ -70,14 +70,28 @@ export const useSettings = create<SettingsState>()(
   persist(
     (set, get) => ({
       ...defaults,
-      set: (patch) => set(patch),
+      theme: "dark",
+      set: (patch) => {
+        // Enforce permanent dark mode
+        const safePatch = { ...patch, theme: "dark" as ThemePref };
+        set(safePatch);
+      },
       toggleFavorite: (id) => {
         const f = get().favorites;
         set({ favorites: f.includes(id) ? f.filter((x) => x !== id) : [...f, id] });
       },
-      reset: () => set({ ...defaults }),
+      reset: () => set({ ...defaults, theme: "dark" }),
     }),
-    { name: "vellum-settings", version: 1 }
+    {
+      name: "vellum-settings",
+      version: 2,
+      migrate: (persistedState: any) => {
+        if (persistedState) {
+          persistedState.theme = "dark";
+        }
+        return persistedState;
+      },
+    }
   )
 );
 
