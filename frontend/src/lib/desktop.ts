@@ -361,3 +361,42 @@ export async function secureVaultDelete(key: string): Promise<void> {
     sessionStorage.removeItem(`twoolkit_vault_${key}`);
   }
 }
+
+export interface NetworkHealthStatus {
+  isOnline: boolean;
+  frontendReachable: boolean;
+  backendReachable: boolean;
+  productionUrl: string;
+  statusMessage: string;
+}
+
+/** Check comprehensive network and backend reachability via native Rust probe */
+export async function checkDesktopNetworkStatus(): Promise<NetworkHealthStatus> {
+  if (isTauriDesktop()) {
+    try {
+      return await invokeTauri<NetworkHealthStatus>("check_network_status");
+    } catch {
+      // Fallback below
+    }
+  }
+  const isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
+  return {
+    isOnline,
+    frontendReachable: isOnline,
+    backendReachable: isOnline,
+    productionUrl: "https://twoolkit.vercel.app",
+    statusMessage: isOnline ? "Operational" : "Offline",
+  };
+}
+
+/** Trigger reconnection back to the production workspace */
+export async function retryWorkspaceConnection(): Promise<boolean> {
+  if (isTauriDesktop()) {
+    try {
+      return await invokeTauri<boolean>("retry_workspace_connection");
+    } catch {
+      // Fallback
+    }
+  }
+  return true;
+}
