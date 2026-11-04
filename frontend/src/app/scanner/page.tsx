@@ -4,6 +4,10 @@ import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useScanStore } from "@/stores/scanStore";
 import { DropZone, type StagedFile } from "@/components/DropZone";
+import {
+  LargestFilesBarChart,
+  FormatDistributionChart,
+} from "@/components/AnalyticsCharts";
 import { analyzeFile } from "@/lib/scanner";
 import { formatBytes, formatDate, CATEGORY_LABEL, type Category } from "@/lib/fileTypes";
 import {
@@ -189,6 +193,30 @@ function ScannerContent() {
               <div className="text-[10px] text-slate-400 mt-0.5">
                 {currentScan.suspiciousFiles.length === 0 ? "All verified clean" : "Issues detected"}
               </div>
+            </div>
+          </div>
+
+          {/* Interactive Visual Telemetry Grid (Format Distribution + Largest Files Bar Chart) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs">
+              <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white mb-3">
+                Scanned File Type & Format Distribution
+              </h2>
+              <FormatDistributionChart
+                files={currentScan.files}
+                totalBytes={currentScan.totalBytes}
+              />
+            </div>
+
+            <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs">
+              <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white mb-3">
+                Top Storage Consumers (Horizontal Bar Comparison)
+              </h2>
+              <LargestFilesBarChart
+                files={currentScan.files}
+                totalBytes={currentScan.totalBytes}
+                limit={5}
+              />
             </div>
           </div>
 

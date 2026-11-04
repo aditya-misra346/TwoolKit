@@ -31,6 +31,9 @@ import {
   organizePdfPages,
   protectPdfClient,
   unlockPdfClient,
+  getPdfInfo,
+  renderPdfThumbnails,
+  type RenderedThumbnail,
   type PageAction,
 } from "@/lib/pdfClient";
 import { formatBytes } from "@/lib/fileTypes";
@@ -119,12 +122,45 @@ export default function DedicatedPdfToolPage({ params }: Props) {
   const [ocrLang, setOcrLang] = useState("eng");
   const [cropMargins, setCropMargins] = useState({ top: 36, right: 36, bottom: 36, left: 36 });
   const [pptxMode, setPptxMode] = useState<"hybrid" | "image">("hybrid");
+  const [docxMode, setDocxMode] = useState<"layout" | "flowing">("layout");
+  const [docxDetectTables, setDocxDetectTables] = useState(true);
+  const [docxOcrFallback, setDocxOcrFallback] = useState(true);
   const [compressLevel, setCompressLevel] = useState<"low" | "balanced" | "max">("balanced");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [docPageCount, setDocPageCount] = useState<number | null>(null);
+  const [previewThumbs, setPreviewThumbs] = useState<RenderedThumbnail[]>([]);
 
   const isImagesToPdf = toolSlug === "images-to-pdf";
   const acceptedExt = isImagesToPdf ? ".jpg,.jpeg,.png,.webp,.bmp" : ".pdf";
   const isOrganize = toolSlug === "organize" || toolSlug === "reorder";
+
+  // Load PDF document page count and preview thumbnails when a PDF is staged
+  useEffect(() => {
+    if (files.length === 0 || isImagesToPdf) {
+      setDocPageCount(null);
+      setPreviewThumbs([]);
+      return;
+    }
+    let active = true;
+    const primary = files[0].file;
+    void getPdfInfo(primary)
+      .then((info) => {
+        if (active) setDocPageCount(info.pageCount);
+      })
+      .catch(() => {
+        if (active) setDocPageCount(null);
+      });
+    void renderPdfThumbnails(primary, 160, 4)
+      .then((thumbs) => {
+        if (active) setPreviewThumbs(thumbs);
+      })
+      .catch(() => {
+        if (active) setPreviewThumbs([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [files, isImagesToPdf]);
 
   // Dedicated handler for Organize Pages applied from the visual grid
   const handleApplyOrganize = async (actions: PageAction[]) => {
@@ -877,8 +913,49 @@ export default function DedicatedPdfToolPage({ params }: Props) {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-          {/* Left Column: Uploaded Files & Staging Deck (5 cols) */}
+          {/* Left Column: Uploaded Files & Live Page Thumbnail Preview (5 cols) */}
           <div className="lg:col-span-5 space-y-4">
+            {!isImagesToPdf && files.length > 0 && (
+              <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FileText className="w-4 h-4 text-red-500 shrink-0" />
+                    <span className="font-bold text-slate-900 dark:text-white truncate">
+                      {files[0].name}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0 font-mono text-[11px]">
+                    {docPageCount !== null && (
+                      <span className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-950/70 dark:text-blue-300 font-bold">
+                        {docPageCount} {docPageCount === 1 ? "page" : "pages"}
+                      </span>
+                    )}
+                    <span className="text-slate-400">{formatBytes(files[0].size)}</span>
+                  </div>
+                </div>
+
+                {previewThumbs.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2 pt-1">
+                    {previewThumbs.map((t) => (
+                      <div
+                        key={t.pageNumber}
+                        className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-1 flex flex-col items-center"
+                      >
+                        <img
+                          src={t.dataUrl}
+                          alt={`Page ${t.pageNumber}`}
+                          className="w-full h-20 object-contain rounded-xs"
+                        />
+                        <span className="text-[9px] font-mono text-slate-400 mt-1">
+                          P.{t.pageNumber}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             <DropZone
               onFilesSelected={(newFiles) => setFiles((prev) => [...prev, ...newFiles])}
               selectedFiles={files}
@@ -1080,6 +1157,81 @@ export default function DedicatedPdfToolPage({ params }: Props) {
                   <option value="fra">French (Français)</option>
                   <option value="deu">German (Deutsch)</option>
                 </select>
+              </div>
+            )}
+
+            {/* Options for to-word (PDF to Word Studio) */}
+            {toolSlug === "to-word" && (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+                    DOCX Reconstruction Mode:
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setDocxMode("layout")}
+                      className={clsx(
+                        "p-3 rounded-xl border text-left text-xs transition-all cursor-pointer",
+                        docxMode === "layout"
+                          ? "border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-semibold shadow-2xs"
+                          : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                      )}
+                    >
+                      <div className="font-bold flex items-center justify-between">
+                        <span>Exact Layout Reconstruction</span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-bold">
+                          Recommended
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 mt-1 leading-relaxed">
+                        Preserves multi-column positioning, font hierarchy, margins, and embedded figures via pdf2docx.
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setDocxMode("flowing")}
+                      className={clsx(
+                        "p-3 rounded-xl border text-left text-xs transition-all cursor-pointer",
+                        docxMode === "flowing"
+                          ? "border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-semibold shadow-2xs"
+                          : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                      )}
+                    >
+                      <div className="font-bold">Flowing Editable Paragraphs</div>
+                      <div className="text-[10px] text-slate-500 mt-1 leading-relaxed">
+                        Optimizes continuous paragraph flow for heavy text editing in Microsoft Word or Google Docs.
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/70 space-y-2.5 text-xs">
+                  <div className="font-bold text-slate-800 dark:text-slate-200">
+                    Formatting & OCR Intelligence:
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <label className="flex items-center gap-2 text-slate-700 dark:text-slate-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={docxDetectTables}
+                        onChange={(e) => setDocxDetectTables(e.target.checked)}
+                        className="rounded border-slate-300 text-blue-600 w-3.5 h-3.5"
+                      />
+                      <span>Reconstruct Native Word Tables</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-slate-700 dark:text-slate-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={docxOcrFallback}
+                        onChange={(e) => setDocxOcrFallback(e.target.checked)}
+                        className="rounded border-slate-300 text-blue-600 w-3.5 h-3.5"
+                      />
+                      <span>Auto-OCR Scanned Image Pages</span>
+                    </label>
+                  </div>
+                </div>
               </div>
             )}
 

@@ -19,11 +19,12 @@ export type Category =
 /** Storage-overview buckets requested for the dashboard. */
 export type StorageBucket =
   | "documents"
+  | "pdfs"
   | "images"
+  | "presentations"
   | "videos"
   | "audio"
   | "archives"
-  | "presentations"
   | "other";
 
 export const CATEGORY_LABEL: Record<Category, string> = {
@@ -41,22 +42,24 @@ export const CATEGORY_LABEL: Record<Category, string> = {
 
 export const BUCKET_LABEL: Record<StorageBucket, string> = {
   documents: "Documents",
+  pdfs: "PDFs",
   images: "Images",
+  presentations: "Presentations",
   videos: "Videos",
   audio: "Audio",
   archives: "Archives",
-  presentations: "Presentations",
   other: "Other",
 };
 
 /** Chart colours (CSS variables defined in globals.css). */
 export const BUCKET_COLOR: Record<StorageBucket, string> = {
   documents: "var(--c-docs)",
+  pdfs: "var(--c-pdf)",
   images: "var(--c-images)",
+  presentations: "var(--c-slides)",
   videos: "var(--c-videos)",
   audio: "var(--c-audio)",
   archives: "var(--c-archives)",
-  presentations: "var(--c-slides)",
   other: "var(--c-other)",
 };
 
@@ -110,6 +113,7 @@ export function categoryOf(name: string): Category {
 export function bucketOf(cat: Category): StorageBucket {
   switch (cat) {
     case "pdf":
+      return "pdfs";
     case "document":
     case "spreadsheet":
     case "code":

@@ -79,6 +79,7 @@ export const NAV_SECTIONS: NavSection[] = [
     items: [
       { id: "dashboard", label: "Dashboard", href: "/", icon: LayoutDashboard },
       { id: "recent", label: "Recent Files", href: "/recent", icon: History },
+      { id: "favorites", label: "Favorites", href: "/?view=favorites", icon: Sparkles },
     ],
   },
   {
@@ -95,11 +96,9 @@ export const NAV_SECTIONS: NavSection[] = [
     id: "pdf-workspace",
     title: "PDF Workspace",
     items: [
-      { id: "pdf", label: "All PDF Tools", href: "/pdf", icon: FileText },
-      { id: "pdf-merge", label: "Merge PDFs", href: "/pdf/merge", icon: Combine },
-      { id: "pdf-split", label: "Split PDF", href: "/pdf/split", icon: Scissors },
-      { id: "pdf-compress", label: "Compress PDF", href: "/pdf/compress", icon: Minimize2 },
+      { id: "pdf", label: "PDF Tools", href: "/pdf", icon: FileText },
       { id: "pdf-to-word", label: "PDF to Word", href: "/pdf/to-word", icon: FileType2 },
+      { id: "pdf-utilities", label: "PDF Utilities", href: "/pdf/organize", icon: LayoutGrid },
     ],
   },
   {
@@ -107,17 +106,24 @@ export const NAV_SECTIONS: NavSection[] = [
     title: "Conversion",
     items: [
       { id: "documents", label: "Document Converter", href: "/documents", icon: FileType2 },
-      { id: "presentations", label: "Presentation Studio", href: "/documents/presentations", icon: Presentation },
-      { id: "images", label: "Image Studio", href: "/images", icon: ImageIcon },
+      { id: "presentations", label: "Presentation Converter", href: "/documents/presentations", icon: Presentation },
+      { id: "images", label: "Image Converter", href: "/images", icon: ImageIcon },
     ],
   },
   {
-    id: "system",
-    title: "System & AI",
+    id: "optimization",
+    title: "Optimization",
     items: [
       { id: "compress", label: "File Compressor", href: "/compress", icon: Minimize2 },
+      { id: "image-opt", label: "Image Optimization", href: "/images?tool=compress", icon: FileImage },
+    ],
+  },
+  {
+    id: "preferences",
+    title: "Preferences",
+    items: [
       { id: "assistant", label: "File Assistant", href: "/assistant", icon: Sparkles },
-      { id: "brand", label: "Brand Identity", href: "/brand", icon: Sparkles },
+      { id: "brand", label: "Brand Identity", href: "/brand", icon: BookOpen },
       { id: "settings", label: "Settings", href: "/settings", icon: Settings },
     ],
   },

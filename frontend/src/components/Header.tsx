@@ -10,6 +10,7 @@ import {
   Search,
   Moon,
   Sun,
+  Laptop,
   ShieldCheck,
   ShieldAlert,
   ListTodo,
@@ -32,20 +33,23 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
     (id) => tasks[id]?.status === "running" || tasks[id]?.status === "queued"
   ).length;
 
-  const toggleTheme = () => {
-    const isDark = document.documentElement.classList.contains("dark");
-    if (isDark) {
-      document.documentElement.classList.remove("dark");
-      set({ theme: "light" });
+  const setThemeMode = (next: "light" | "dark" | "system") => {
+    set({ theme: next });
+    const root = document.documentElement;
+    if (next === "dark") {
+      root.classList.add("dark");
+    } else if (next === "light") {
+      root.classList.remove("dark");
     } else {
-      document.documentElement.classList.add("dark");
-      set({ theme: "dark" });
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      if (prefersDark) root.classList.add("dark");
+      else root.classList.remove("dark");
     }
   };
 
   return (
     <>
-      <header className="h-14 px-4 md:px-6 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/70 dark:bg-slate-950/70 backdrop-blur-md flex items-center justify-between gap-4 sticky top-0 z-20 select-none">
+      <header className="h-14 px-4 md:px-6 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md flex items-center justify-between gap-4 sticky top-0 z-20 select-none">
         {/* Left: Mobile Menu Toggle & Raycast-style Search Bar */}
         <div className="flex items-center gap-3 flex-1 max-w-lg">
           <button
@@ -62,23 +66,23 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
 
           <button
             onClick={() => setSearchOpen(true)}
-            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-xs text-slate-400 dark:text-slate-500 bg-slate-100/70 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-800/70 hover:border-slate-300 dark:hover:border-slate-700 transition-colors shadow-2xs group cursor-pointer"
+            className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-xs text-slate-400 dark:text-slate-500 bg-slate-100/80 dark:bg-slate-900/70 border border-slate-200/80 dark:border-slate-800/80 hover:border-blue-400/60 dark:hover:border-blue-500/60 transition-all shadow-2xs group cursor-pointer"
           >
             <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-500 transition-colors" />
-            <span className="truncate">Search tools, actions, shortcuts...</span>
-            <kbd className="hidden sm:inline-block ml-auto px-1.5 py-0.5 text-[10px] font-semibold text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
+            <span className="truncate">Search 42+ tools, conversions, shortcuts...</span>
+            <kbd className="hidden sm:inline-block ml-auto px-1.5 py-0.5 text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700 font-mono">
               ⌘K
             </kbd>
           </button>
         </div>
 
-        {/* Right: Cloud Consent Badge, Queue Trigger, Theme Toggle */}
+        {/* Right: Cloud Consent Badge, Queue Trigger, 3-Way Theme Switcher */}
         <div className="flex items-center gap-2 sm:gap-2.5">
           {/* Cloud Consent Indicator */}
           <button
             onClick={() => setConsentOpen(true)}
             className={clsx(
-              "hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all cursor-pointer",
+              "hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-medium border transition-all cursor-pointer",
               cloudConsent
                 ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-800/60 hover:bg-emerald-100/60"
                 : "bg-slate-100 text-slate-600 dark:bg-slate-800/80 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200/60"
@@ -102,12 +106,13 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
           <button
             onClick={() => setDrawer(true)}
             className={clsx(
-              "relative p-2 rounded-lg transition-colors cursor-pointer",
+              "relative p-2 rounded-xl transition-colors cursor-pointer",
               activeTaskCount > 0
                 ? "text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60"
                 : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/60"
             )}
-            title="View batch queue"
+            title="View batch processing queue"
+            aria-label="Open processing queue"
           >
             <ListTodo className="w-4 h-4" />
             {activeTaskCount > 0 && (
@@ -117,15 +122,38 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
             )}
           </button>
 
-          {/* Theme Toggle */}
-          <button
-            onClick={toggleTheme}
-            className="p-2 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800/60 rounded-lg transition-colors cursor-pointer"
-            title="Toggle theme"
-            aria-label="Toggle theme"
+          {/* 3-Way Segmented Theme Switcher (Light / Dark / System) */}
+          <div
+            role="group"
+            aria-label="Theme mode"
+            className="flex items-center p-0.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80"
           >
-            {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
+            {[
+              { id: "light" as const, icon: Sun, title: "Light theme" },
+              { id: "dark" as const, icon: Moon, title: "Dark theme" },
+              { id: "system" as const, icon: Laptop, title: "System theme" },
+            ].map((item) => {
+              const Icon = item.icon;
+              const active = theme === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setThemeMode(item.id)}
+                  title={item.title}
+                  aria-label={item.title}
+                  className={clsx(
+                    "p-1.5 rounded-lg transition-all cursor-pointer",
+                    active
+                      ? "bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-2xs"
+                      : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                  )}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                </button>
+              );
+            })}
+          </div>
         </div>
       </header>
 

@@ -3,6 +3,10 @@
 import { useState, useMemo } from "react";
 import { useScanStore, type TrashItem } from "@/stores/scanStore";
 import { StorageChart } from "@/components/StorageChart";
+import {
+  FolderStorageBarChart,
+  LargestFilesBarChart,
+} from "@/components/AnalyticsCharts";
 import { formatBytes, formatDate, bucketOf, type StorageBucket } from "@/lib/fileTypes";
 import {
   HardDrive,
@@ -113,9 +117,20 @@ export default function StorageManagerPage() {
   };
 
   // Buckets for chart
-  const storageBreakdown = useMemo(() => {
+  const { storageBreakdown, storageCounts } = useMemo(() => {
     const buckets: Record<StorageBucket, number> = {
       documents: 0,
+      pdfs: 0,
+      images: 0,
+      presentations: 0,
+      videos: 0,
+      audio: 0,
+      archives: 0,
+      other: 0,
+    };
+    const counts: Record<StorageBucket, number> = {
+      documents: 0,
+      pdfs: 0,
       images: 0,
       presentations: 0,
       videos: 0,
@@ -128,8 +143,12 @@ export default function StorageManagerPage() {
         const b = bucketOf(cat as any);
         buckets[b] = (buckets[b] || 0) + bytes;
       }
+      for (const [cat, cnt] of Object.entries(currentScan.categoryCounts)) {
+        const b = bucketOf(cat as any);
+        counts[b] = (counts[b] || 0) + cnt;
+      }
     }
-    return buckets;
+    return { storageBreakdown: buckets, storageCounts: counts };
   }, [currentScan]);
 
   const filteredFileManagerFiles = useMemo(() => {
@@ -220,10 +239,11 @@ export default function StorageManagerPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
             <div className="lg:col-span-8 p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs">
               <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white mb-4">
-                Current Storage Allocation
+                Current Storage Allocation (Donut, Pie & Bar Views)
               </h2>
               <StorageChart
                 bucketBytes={storageBreakdown}
+                bucketCounts={storageCounts}
                 totalBytes={currentScan?.totalBytes || 0}
               />
             </div>
@@ -233,7 +253,7 @@ export default function StorageManagerPage() {
                 <span className="text-[10px] font-bold uppercase tracking-wider text-blue-200">
                   Estimated Cleanable Space
                 </span>
-                <div className="text-2xl sm:text-3xl font-black mt-1.5 tracking-tight">
+                <div className="text-2xl sm:text-3xl font-black mt-1.5 tracking-tight metric-number">
                   {formatBytes(totalRecoverable)}
                 </div>
                 <p className="text-xs text-blue-100/90 mt-2 leading-relaxed">
@@ -250,6 +270,36 @@ export default function StorageManagerPage() {
                   <span>Review Cleanup Suggestions</span>
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* Directory Breakdown & Largest Files Bar Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs">
+              <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white mb-1">
+                Storage by Directory / Folder
+              </h2>
+              <p className="text-[11px] text-slate-400 mb-4">
+                Horizontal comparison of storage consumed across scanned folders
+              </p>
+              <FolderStorageBarChart
+                files={currentScan?.files || []}
+                totalBytes={currentScan?.totalBytes || 0}
+              />
+            </div>
+
+            <div className="p-5 sm:p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs">
+              <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white mb-1">
+                Largest Individual Files
+              </h2>
+              <p className="text-[11px] text-slate-400 mb-4">
+                Top storage-heavy files ranked by byte footprint
+              </p>
+              <LargestFilesBarChart
+                files={currentScan?.files || []}
+                totalBytes={currentScan?.totalBytes || 0}
+                limit={6}
+              />
             </div>
           </div>
 

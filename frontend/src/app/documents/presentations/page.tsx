@@ -25,6 +25,8 @@ export default function PresentationStudioPage() {
   const [files, setFiles] = useState<StagedFile[]>([]);
   const [outputMode, setOutputMode] = useState<"pdf" | "images" | "video">("pdf");
   const [imageFormat, setImageFormat] = useState<"png" | "jpeg" | "webp">("png");
+  const [slideDpi, setSlideDpi] = useState<number>(200);
+  const [slideOrientation, setSlideOrientation] = useState<"preserve" | "16:9" | "4:3">("preserve");
   const [secondsPerSlide, setSecondsPerSlide] = useState(3);
   const [videoWidth, setVideoWidth] = useState(1920);
   const [showConsentModal, setShowConsentModal] = useState(false);
@@ -62,7 +64,7 @@ export default function PresentationStudioPage() {
           inputSize: f.size,
           engine: "server",
           run: async (ctx) => {
-            const res = await runServerJob("office.to_images", [f.file], [f.name], { format: imageFormat, dpi: 150 }, ctx.signal, (p, s) =>
+            const res = await runServerJob("office.to_images", [f.file], [f.name], { format: imageFormat, dpi: slideDpi }, ctx.signal, (p, s) =>
               ctx.progress(p, s)
             );
             return { outputs: res.files, warnings: res.warnings };
@@ -200,28 +202,78 @@ export default function PresentationStudioPage() {
               </div>
             </div>
 
+            {/* Options for PDF & Slide Layout */}
+            {outputMode === "pdf" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    Slide Aspect & Orientation:
+                  </label>
+                  <select
+                    value={slideOrientation}
+                    onChange={(e) => setSlideOrientation(e.target.value as any)}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs focus:outline-hidden"
+                  >
+                    <option value="preserve">Preserve Original Deck Aspect</option>
+                    <option value="16:9">Widescreen Presentation (16:9)</option>
+                    <option value="4:3">Standard Slide Deck (4:3)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                    Vector & Embedded Graphics DPI:
+                  </label>
+                  <select
+                    value={slideDpi}
+                    onChange={(e) => setSlideDpi(parseInt(e.target.value, 10))}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs focus:outline-hidden"
+                  >
+                    <option value={150}>150 DPI (Web & Email)</option>
+                    <option value={200}>200 DPI (High Clarity - Recommended)</option>
+                    <option value={300}>300 DPI (Print & Archival)</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
             {/* Options for Slide Images */}
             {outputMode === "images" && (
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
-                  Image Format:
-                </label>
-                <div className="flex gap-2">
-                  {(["png", "jpeg", "webp"] as const).map((fmt) => (
-                    <button
-                      key={fmt}
-                      type="button"
-                      onClick={() => setImageFormat(fmt)}
-                      className={clsx(
-                        "px-3 py-1.5 rounded-lg text-xs font-semibold uppercase border transition-all cursor-pointer",
-                        imageFormat === fmt
-                          ? "border-orange-500 bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300"
-                          : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
-                      )}
-                    >
-                      {fmt}
-                    </button>
-                  ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60">
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+                    Image Format:
+                  </label>
+                  <div className="flex gap-2">
+                    {(["png", "jpeg", "webp"] as const).map((fmt) => (
+                      <button
+                        key={fmt}
+                        type="button"
+                        onClick={() => setImageFormat(fmt)}
+                        className={clsx(
+                          "px-3 py-1.5 rounded-lg text-xs font-semibold uppercase border transition-all cursor-pointer",
+                          imageFormat === fmt
+                            ? "border-orange-500 bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300"
+                            : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400"
+                        )}
+                      >
+                        {fmt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+                    Slide Render DPI:
+                  </label>
+                  <select
+                    value={slideDpi}
+                    onChange={(e) => setSlideDpi(parseInt(e.target.value, 10))}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs focus:outline-hidden"
+                  >
+                    <option value={150}>150 DPI (Standard HD)</option>
+                    <option value={200}>200 DPI (Crisp Retina)</option>
+                    <option value={300}>300 DPI (Ultra Print)</option>
+                  </select>
                 </div>
               </div>
             )}
