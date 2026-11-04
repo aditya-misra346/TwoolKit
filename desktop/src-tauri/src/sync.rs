@@ -83,6 +83,92 @@ pub fn evaluate_sync_compatibility(
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NetworkHealthStatus {
+    pub is_online: bool,
+    pub frontend_reachable: bool,
+    pub backend_reachable: bool,
+    pub production_url: String,
+    pub status_message: String,
+}
+
+/// Probes whether a given TwoolKit endpoint is reachable, distinguishing between
+/// offline internet, unreachable frontend, and backend processing state.
+pub async fn probe_endpoint_health(base_url: &str) -> NetworkHealthStatus {
+    let trimmed = base_url.trim_end_matches('/');
+    let client = match reqwest::Client::builder()
+        .timeout(std::time::Duration::from_millis(2500))
+        .user_agent(format!(
+            "TwoolKit-Desktop/{} ({})",
+            env!("CARGO_PKG_VERSION"),
+            std::env::consts::OS
+        ))
+        .build()
+    {
+        Ok(c) => c,
+        Err(_) => {
+            return NetworkHealthStatus {
+                is_online: false,
+                frontend_reachable: false,
+                backend_reachable: false,
+                production_url: base_url.to_string(),
+                status_message: "Failed to initialize HTTP client.".to_string(),
+            }
+        }
+    };
+
+    // 1. Probe frontend health endpoint
+    let health_url = format!("{}/api/health", trimmed);
+    if let Ok(res) = client.get(&health_url).send().await {
+        if res.status().is_success() {
+            return NetworkHealthStatus {
+                is_online: true,
+                frontend_reachable: true,
+                backend_reachable: true,
+                production_url: base_url.to_string(),
+                status_message: "Operational".to_string(),
+            };
+        }
+    }
+
+    // 2. If /api/health returned non-200, probe root landing page
+    if let Ok(res) = client.get(trimmed).send().await {
+        if res.status().is_success() {
+            return NetworkHealthStatus {
+                is_online: true,
+                frontend_reachable: true,
+                backend_reachable: false,
+                production_url: base_url.to_string(),
+                status_message: "Frontend online; processing verification pending.".to_string(),
+            };
+        }
+    }
+
+    // 3. Check general internet connectivity to distinguish offline from server downtime
+    let is_online = client
+        .get("https://1.1.1.1")
+        .timeout(std::time::Duration::from_millis(1500))
+        .send()
+        .await
+        .is_ok();
+
+    let status_message = if is_online {
+        format!("Internet connection active, but {} is unreachable.", base_url)
+    } else {
+        "No internet connection detected. Please verify your Wi-Fi or network connection."
+            .to_string()
+    };
+
+    NetworkHealthStatus {
+        is_online,
+        frontend_reachable: false,
+        backend_reachable: false,
+        production_url: base_url.to_string(),
+        status_message,
+    }
+}
+
 /// Fetches `/api/desktop-manifest` from the configured TwoolKit production URL.
 pub async fn fetch_remote_manifest(base_url: &str) -> Result<RemoteDesktopManifest, String> {
     let trimmed = base_url.trim_end_matches('/');
@@ -145,5 +231,13 @@ mod tests {
         assert!(breaking_eval.has_website_update);
         assert!(breaking_eval.requires_native_upgrade);
         assert!(!breaking_eval.can_hot_reload_safely);
+    }
+
+    #[tokio::test]
+    async fn test_probe_endpoint_offline_resilience() {
+        // Non-existent port must not panic and must return offline/unreachable
+        let health = probe_endpoint_health("http://127.0.0.1:49999").await;
+        assert!(!health.frontend_reachable);
+        assert!(!health.backend_reachable);
     }
 }
