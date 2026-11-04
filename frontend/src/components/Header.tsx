@@ -8,9 +8,6 @@ import { ConsentModal } from "./ConsentModal";
 import { Logo } from "./Logo";
 import {
   Search,
-  Moon,
-  Sun,
-  Laptop,
   ShieldCheck,
   ShieldAlert,
   ListTodo,
@@ -23,7 +20,7 @@ interface HeaderProps {
 }
 
 export function Header({ onToggleMobileMenu }: HeaderProps) {
-  const { theme, set, cloudConsent } = useSettings();
+  const { cloudConsent } = useSettings();
   const { order, tasks, setDrawer } = useQueue();
 
   const [searchOpen, setSearchOpen] = useState(false);
@@ -33,23 +30,9 @@ export function Header({ onToggleMobileMenu }: HeaderProps) {
     (id) => tasks[id]?.status === "running" || tasks[id]?.status === "queued"
   ).length;
 
-  const setThemeMode = (next: "light" | "dark" | "system") => {
-    set({ theme: next });
-    const root = document.documentElement;
-    if (next === "dark") {
-      root.classList.add("dark");
-    } else if (next === "light") {
-      root.classList.remove("dark");
-    } else {
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      if (prefersDark) root.classList.add("dark");
-      else root.classList.remove("dark");
-    }
-  };
-
   return (
     <>
-      <header className="h-14 px-4 md:px-6 border-b border-slate-200/80 dark:border-slate-800/80 bg-white/80 dark:bg-slate-950/80 backdrop-blur-md flex items-center justify-between gap-4 sticky top-0 z-20 select-none">
+      <header className="h-14 px-4 md:px-6 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md flex items-center justify-between gap-4 sticky top-0 z-20 select-none">
         {/* Left: Mobile Menu Toggle & Raycast-style Search Bar */}
         <div className="flex items-center gap-3 flex-1 max-w-lg">
           <button
