@@ -137,6 +137,7 @@ export const TOOLS: Tool[] = [
   { id: "compress", name: "Compress Files", description: "PDF, images, Office files and ZIP archives.", href: "/compress", icon: Minimize2, group: "core", engine: "hybrid", keywords: "compress reduce size shrink optimize zip" },
   { id: "organizer", name: "Organize Files", description: "Batch rename, sort into folders, ZIP create/extract.", href: "/organizer", icon: FolderTree, group: "manage", engine: "local", keywords: "rename organize sort folder zip extract archive batch" },
   { id: "assistant", name: "File Assistant", description: "Summaries, key facts and format advice for your files.", href: "/assistant", icon: Sparkles, group: "manage", engine: "hybrid", keywords: "ai assistant summarize summary extract explain gemini" },
+  { id: "brand", name: "Brand Identity", description: "Official TWOOLKIT logo, design system, guidelines & vector assets.", href: "/brand", icon: Sparkles, group: "core", engine: "local", keywords: "brand logo identity design system vector svg assets guidelines" },
   { id: "archive", name: "ZIP Archives", description: "Create or safely extract ZIP archives in the browser.", href: "/organizer?tab=archive", icon: Archive, group: "manage", engine: "local", keywords: "zip unzip archive extract create" },
 
   // ---- PDF management
