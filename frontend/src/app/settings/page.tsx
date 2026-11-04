@@ -20,9 +20,6 @@ import {
 import {
   Settings,
   Shield,
-  Moon,
-  Sun,
-  Laptop,
   Trash2,
   Sparkles,
   Key,
@@ -43,7 +40,6 @@ import clsx from "clsx";
 
 export default function SettingsPage() {
   const {
-    theme,
     cloudConsent,
     purgeServerAfterDownload,
     maxOutputStorageMB,
