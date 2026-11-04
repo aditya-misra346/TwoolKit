@@ -397,12 +397,12 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Section 5: Account Synchronization & Secure Credential Vault */}
+        {/* Section 4: Account Synchronization & Secure Credential Vault */}
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
               <UserCheck className="w-4 h-4 text-amber-500" />
-              <span>5. Account Sync & Encrypted Credential Vault</span>
+              <span>4. Account Sync & Encrypted Credential Vault</span>
             </span>
             <span className="text-[10px] font-semibold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
               OS Vault Protected
@@ -478,7 +478,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Section 6: Cache Management & Reset */}
+        {/* Section 5: Cache Management & Reset */}
         <div className="pt-2 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <button
