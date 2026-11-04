@@ -249,6 +249,30 @@ fn quit_application(app: AppHandle) {
     app.exit(0);
 }
 
+#[tauri::command]
+async fn check_network_status(
+    state: State<'_, DesktopAppState>,
+) -> Result<NetworkHealthStatus, String> {
+    Ok(probe_endpoint_health(&state.remote_web_url).await)
+}
+
+#[tauri::command]
+async fn retry_workspace_connection(
+    app: AppHandle,
+    state: State<'_, DesktopAppState>,
+) -> Result<bool, String> {
+    let health = probe_endpoint_health(&state.remote_web_url).await;
+    if health.frontend_reachable {
+        if let Some(window) = app.get_webview_window("main") {
+            if let Ok(target) = state.remote_web_url.parse() {
+                let _ = window.navigate(target);
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let remote_web_url = std::env::var("TWOOLKIT_WEB_URL")
@@ -278,6 +302,30 @@ pub fn run() {
                 remote_web_url: remote_web_url.clone(),
             });
 
+            // If an explicit developer override was set (e.g. TWOOLKIT_WEB_URL=http://localhost:3000), navigate to it
+            if let Ok(custom_url) = std::env::var("TWOOLKIT_WEB_URL") {
+                if let Ok(target) = custom_url.parse() {
+                    if let Some(window) = app.get_webview_window("main") {
+                        let _ = window.navigate(target);
+                    }
+                }
+            } else {
+                // Intelligent startup check: if the production website cannot be reached,
+                // fall back gracefully to the local offline recovery screen
+                let app_handle = app.handle().clone();
+                let target_url = remote_web_url.clone();
+                tauri::async_runtime::spawn(async move {
+                    let health = probe_endpoint_health(&target_url).await;
+                    if !health.frontend_reachable {
+                        if let Some(window) = app_handle.get_webview_window("main") {
+                            if let Ok(fallback_url) = "tauri://localhost/index.html".parse() {
+                                let _ = window.navigate(fallback_url);
+                            }
+                        }
+                    }
+                });
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -290,6 +338,8 @@ pub fn run() {
             native_file_operation,
             check_website_sync,
             check_native_update,
+            check_network_status,
+            retry_workspace_connection,
             vault_set_secret,
             vault_get_secret,
             vault_delete_secret,
