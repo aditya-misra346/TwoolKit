@@ -321,11 +321,11 @@ export default function SettingsPage() {
           )}
         </div>
 
-        {/* Section 4: Processing Privacy & Retention */}
+        {/* Section 3: Processing Privacy & Retention */}
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-2xs space-y-3">
           <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
             <Shield className="w-4 h-4 text-emerald-500" />
-            <span>4. Processing Privacy & Resource Limits</span>
+            <span>3. Processing Privacy & Resource Limits</span>
           </span>
 
           <div className="space-y-2.5">
