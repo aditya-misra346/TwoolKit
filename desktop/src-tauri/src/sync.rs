@@ -154,7 +154,10 @@ pub async fn probe_endpoint_health(base_url: &str) -> NetworkHealthStatus {
         .is_ok();
 
     let status_message = if is_online {
-        format!("Internet connection active, but {} is unreachable.", base_url)
+        format!(
+            "Internet connection active, but {} is unreachable.",
+            base_url
+        )
     } else {
         "No internet connection detected. Please verify your Wi-Fi or network connection."
             .to_string()
@@ -233,11 +236,12 @@ mod tests {
         assert!(!breaking_eval.can_hot_reload_safely);
     }
 
-    #[tokio::test]
-    async fn test_probe_endpoint_offline_resilience() {
-        // Non-existent port must not panic and must return offline/unreachable
-        let health = probe_endpoint_health("http://127.0.0.1:49999").await;
-        assert!(!health.frontend_reachable);
-        assert!(!health.backend_reachable);
+    #[test]
+    fn test_probe_endpoint_offline_resilience() {
+        tauri::async_runtime::block_on(async {
+            let health = probe_endpoint_health("http://127.0.0.1:49999").await;
+            assert!(!health.frontend_reachable);
+            assert!(!health.backend_reachable);
+        });
     }
 }

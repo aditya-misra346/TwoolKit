@@ -7,8 +7,8 @@ use crate::fs_ops::{
 };
 use crate::security::{AuthorizedGrantStore, EncryptedVault};
 use crate::sync::{
-    evaluate_sync_compatibility, fetch_remote_manifest, probe_endpoint_health,
-    NetworkHealthStatus, WebsiteSyncEvaluation, DEFAULT_PRODUCTION_WEB_URL,
+    evaluate_sync_compatibility, fetch_remote_manifest, probe_endpoint_health, NetworkHealthStatus,
+    WebsiteSyncEvaluation, DEFAULT_PRODUCTION_WEB_URL,
 };
 use serde::{Deserialize, Serialize};
 use std::fs;
