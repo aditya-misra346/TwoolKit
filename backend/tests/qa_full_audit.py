@@ -395,7 +395,57 @@ def test_live_vercel_production():
     return "twoolkit.vercel.app live + CORS + Dark Mode OK"
 
 
+def test_long_dynamic_filenames():
+    pdf_a = make_pdf("RDBMS Lab Viva Questions Final Revised Content", pages=1)
+    pdf_b = make_pdf("Advanced Image Optimization Research Document 2026 Content", pages=1)
+    pptx_c = make_pptx()
+
+    res_merge = post_job(
+        "/api/pdf/merge",
+        [
+            ("files", "RDBMS_Lab_Viva_Questions_Final_Revised.pdf", pdf_a, "application/pdf"),
+            ("files", "Advanced_Image_Optimization_Research_Document_2026.pdf", pdf_b, "application/pdf"),
+        ],
+    )
+    assert res_merge["status"] == "completed"
+    out_bytes = download_output(res_merge)
+    doc = fitz.open(stream=out_bytes, filetype="pdf")
+    assert len(doc) == 2
+
+    res_pptx = post_job(
+        "/api/presentations/convert",
+        [
+            (
+                "files",
+                "Presentation_Conversion_And_Storage_Management_Report.pptx",
+                pptx_c,
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            )
+        ],
+        {"target_format": "pdf"},
+    )
+    assert res_pptx["status"] == "completed"
+    out_pptx_pdf = download_output(res_pptx)
+    assert out_pptx_pdf.startswith(b"%PDF")
+    return "Long dynamic filenames (RDBMS_Lab_Viva..., Advanced_Image_Optimization..., Presentation_Conversion...) OK"
+
+
+def test_typography_and_layout_scale():
+    repo_root = Path(__file__).resolve().parents[2]
+    css = (repo_root / "frontend" / "src" / "app" / "globals.css").read_text(encoding="utf-8")
+    assert "--text-base: 1.0625rem" in css, "Missing elevated base font scale in globals.css"
+    assert "--font-page-title:" in css, "Missing fluid clamp page title variable"
+    assert "--font-section-title:" in css, "Missing fluid clamp section title variable"
+    sidebar = (repo_root / "frontend" / "src" / "components" / "Sidebar.tsx").read_text(encoding="utf-8")
+    assert "w-[272px] lg:w-[288px]" in sidebar, "Sidebar width not expanded for larger typography"
+    header = (repo_root / "frontend" / "src" / "components" / "Header.tsx").read_text(encoding="utf-8")
+    assert "h-16" in header, "Header height not expanded to h-16"
+    return "Global typography scale (--text-*, clamp vars) + expanded layout containers verified"
+
+
 check("Frontend API endpoints (/api/health, /capabilities, /desktop-manifest)", test_frontend_api_routes)
+check("Long dynamic filenames processing & preservation", test_long_dynamic_filenames)
+check("Global typography scale & responsive layout system check", test_typography_and_layout_scale)
 check("Live Vercel Production (https://twoolkit.vercel.app) verification", test_live_vercel_production)
 
 print(f"\nSUMMARY: {PASSED} passed, {FAILED} failed")
