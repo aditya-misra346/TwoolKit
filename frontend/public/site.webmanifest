@@ -1,0 +1,29 @@
+{
+  "name": "TwoolKit — All-in-One File Management, Scanning & Conversion",
+  "short_name": "TwoolKit",
+  "description": "An enterprise-grade, all-in-one file management platform combining document scanning, storage management, PDF utilities, image studio, file compression, and batch processing.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090b10",
+  "theme_color": "#090b10",
+  "icons": [
+    {
+      "src": "/brand/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/brand/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/og-logo-square.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
