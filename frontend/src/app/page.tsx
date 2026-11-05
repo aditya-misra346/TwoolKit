@@ -613,28 +613,28 @@ function DashboardContent() {
         </div>
 
         {toolTab === "featured" && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {featuredShortcuts.map((tool) => {
               const Icon = tool.icon;
               const isFav = favorites.includes(tool.toolId);
               return (
                 <div
                   key={tool.id}
-                  className="group relative p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-xs transition-all flex flex-col justify-between"
+                  className="group relative p-5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-blue-500 hover:shadow-xs transition-all flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex items-start justify-between">
                       <Link
                         href={tool.href}
                         className={clsx(
-                          "w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105",
+                          "w-11 h-11 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105",
                           tool.color
                         )}
                       >
                         <Icon className="w-5 h-5" />
                       </Link>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xs font-bold tracking-wider uppercase px-2.5 py-0.5 rounded-md bg-slate-800 text-slate-300">
                           {tool.engine}
                         </span>
                         <button
@@ -642,31 +642,31 @@ function DashboardContent() {
                           onClick={() => toggleFavorite(tool.toolId)}
                           title={isFav ? "Remove from favorites" : "Pin to favorites"}
                           className={clsx(
-                            "p-1 rounded-lg transition-colors cursor-pointer",
+                            "p-1.5 rounded-lg transition-colors cursor-pointer",
                             isFav
-                              ? "text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/40"
-                              : "text-slate-300 dark:text-slate-700 hover:text-amber-400"
+                              ? "text-amber-400 hover:bg-amber-950/40"
+                              : "text-slate-500 hover:text-amber-400"
                           )}
                         >
-                          <Star className={clsx("w-3.5 h-3.5", isFav && "fill-current")} />
+                          <Star className={clsx("w-4 h-4", isFav && "fill-current")} />
                         </button>
                       </div>
                     </div>
-                    <Link href={tool.href} className="block mt-3">
-                      <h3 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    <Link href={tool.href} className="block mt-3.5">
+                      <h3 className="text-base sm:text-lg font-bold text-white group-hover:text-blue-400 transition-colors">
                         {tool.name}
                       </h3>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                      <p className="text-xs sm:text-sm text-slate-300 mt-1.5 leading-relaxed">
                         {tool.desc}
                       </p>
                     </Link>
                   </div>
                   <Link
                     href={tool.href}
-                    className="pt-3 mt-2 flex items-center text-[11px] font-semibold text-blue-600 dark:text-blue-400 group-hover:translate-x-0.5 transition-transform"
+                    className="pt-4 mt-2 flex items-center text-xs font-semibold text-blue-400 group-hover:translate-x-0.5 transition-transform"
                   >
                     <span>Open Workspace</span>
-                    <ArrowRight className="w-3 h-3 ml-1" />
+                    <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                   </Link>
                 </div>
               );

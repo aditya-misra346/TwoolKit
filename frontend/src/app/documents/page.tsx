@@ -99,23 +99,23 @@ function DocumentConverterContent() {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-150">
+    <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in duration-150">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-            <FileType2 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-            Universal Document & Tabular Converter
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
+            <FileType2 className="w-7 h-7 text-blue-400 shrink-0" />
+            <span>Universal Document & Tabular Converter</span>
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+          <p className="text-sm sm:text-base text-slate-300 mt-1.5 max-w-3xl leading-relaxed">
             High-fidelity document conversion powered by headless LibreOffice and native tabular stream parsers.
           </p>
         </div>
 
         <Link
           href="/documents/presentations"
-          className="px-3.5 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800/80 text-xs font-semibold flex items-center gap-2 shrink-0 self-start hover:bg-orange-100 transition-colors"
+          className="px-4 py-2.5 rounded-xl bg-orange-950/50 text-orange-300 border border-orange-800/80 text-xs sm:text-sm font-semibold flex items-center gap-2 shrink-0 self-start hover:bg-orange-900/40 transition-colors"
         >
-          <Presentation className="w-4 h-4 text-orange-600" />
+          <Presentation className="w-4 h-4 text-orange-400" />
           <span>Presentation Studio</span>
         </Link>
       </div>

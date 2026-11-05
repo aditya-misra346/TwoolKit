@@ -841,31 +841,31 @@ export default function DedicatedPdfToolPage({ params }: Props) {
     ].includes(toolSlug);
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-150">
+    <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in duration-150">
       {/* Top Header Bar */}
-      <div className="flex items-center justify-between pb-1 border-b border-slate-200/60 dark:border-slate-800/60">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="flex items-center gap-3.5">
           <Link
             href="/pdf"
-            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+            className="p-2 rounded-xl border border-slate-800 hover:bg-slate-800 text-slate-300 hover:text-white transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-5 h-5" />
           </Link>
           <div>
-            <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight flex flex-wrap items-center gap-2.5">
               <span>{tool?.name || "PDF Workspace Tool"}</span>
               <span
                 className={clsx(
-                  "text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded",
+                  "text-2xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-md",
                   isLocalEngine
-                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                    : "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                    ? "bg-emerald-950/70 text-emerald-300 border border-emerald-800/70"
+                    : "bg-blue-950/70 text-blue-300 border border-blue-800/70"
                 )}
               >
                 {isLocalEngine ? "In-Browser (100% Private)" : "Hybrid & High-Fidelity"}
               </span>
             </h1>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-sm sm:text-base text-slate-300 mt-1">
               {tool?.description || "Configure parameters and run the document operation"}
             </p>
           </div>

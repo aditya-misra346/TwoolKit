@@ -117,13 +117,13 @@ export default function FileCompressorPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-150">
+    <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in duration-150">
       <div>
-        <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-          <Minimize2 className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-          Multi-Tier File Compressor
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
+          <Minimize2 className="w-7 h-7 text-purple-400 shrink-0" />
+          <span>Multi-Tier File Compressor</span>
         </h1>
-        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+        <p className="text-sm sm:text-base text-slate-300 mt-1.5 max-w-3xl leading-relaxed">
           Intelligent size reduction across PDF documents, high-res images, Office presentations, and archives.
         </p>
       </div>
