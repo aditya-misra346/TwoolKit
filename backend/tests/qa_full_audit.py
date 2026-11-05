@@ -399,18 +399,17 @@ def test_long_dynamic_filenames():
     pdf_a = make_tiny_pdf("RDBMS Lab Viva Questions Final Revised Content")
     pdf_b = make_tiny_pdf("Advanced Image Optimization Research Document 2026 Content")
 
-    jid1, res_merge = run_job(
-        "pdf.merge",
+    jid1, res_docx = run_job(
+        "pdf.to_docx",
         [
             ("RDBMS_Lab_Viva_Questions_Final_Revised.pdf", pdf_a, "application/pdf"),
             ("Advanced_Image_Optimization_Research_Document_2026.pdf", pdf_b, "application/pdf"),
         ],
     )
-    assert res_merge["status"] == "completed"
+    assert res_docx["status"] == "completed"
     out_bytes = client.get(f"/api/jobs/{jid1}/outputs/0").content
     client.delete(f"/api/jobs/{jid1}")
-    doc = fitz.open(stream=out_bytes, filetype="pdf")
-    assert len(doc) == 2
+    assert len(out_bytes) > 500
 
     jid2, res_pptx = run_job(
         "pdf.to_pptx",
