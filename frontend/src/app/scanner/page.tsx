@@ -139,11 +139,11 @@ function ScannerContent() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-            <ScanSearch className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+            <ScanSearch className="w-7 h-7 text-blue-600 dark:text-blue-400 shrink-0" />
             Advanced File Scanner & Duplicate Finder
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+          <p className="text-sm sm:text-base text-slate-500 dark:text-slate-300 mt-1.5 max-w-2xl leading-relaxed">
             In-depth inspection of file signatures, SHA-256 cryptographic hashes, perceptual image duplicates, and integrity anomalies.
           </p>
         </div>
@@ -152,9 +152,9 @@ function ScannerContent() {
           <button
             type="button"
             onClick={handleNativeFolderScan}
-            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-colors flex items-center gap-2 self-start cursor-pointer"
+            className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors flex items-center gap-2 self-start cursor-pointer"
           >
-            <FolderTree className="w-3.5 h-3.5" />
+            <FolderTree className="w-4 h-4" />
             <span>Scan Local Folder (Native Rust)</span>
           </button>
         )}
@@ -364,15 +364,15 @@ function ScannerContent() {
               {/* Table */}
               <div className="rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-400 font-semibold uppercase tracking-wider text-[10px] border-b border-slate-200 dark:border-slate-800">
+                  <table className="w-full text-left text-xs sm:text-sm">
+                    <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-400 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-200 dark:border-slate-800">
                       <tr>
-                        <th className="py-2.5 px-4">File Name / Path</th>
-                        <th className="py-2.5 px-4">Category</th>
-                        <th className="py-2.5 px-4">Size</th>
-                        <th className="py-2.5 px-4">Signature</th>
-                        <th className="py-2.5 px-4">SHA-256 Hash</th>
-                        <th className="py-2.5 px-4">Modified</th>
+                        <th className="py-3 px-4">File Name / Path</th>
+                        <th className="py-3 px-4">Category</th>
+                        <th className="py-3 px-4">Size</th>
+                        <th className="py-3 px-4">Signature</th>
+                        <th className="py-3 px-4">SHA-256 Hash</th>
+                        <th className="py-3 px-4">Modified</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
@@ -385,16 +385,16 @@ function ScannerContent() {
                       ) : (
                         filteredFiles.map((f) => (
                           <tr key={f.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                            <td className="py-2.5 px-4 font-medium text-slate-900 dark:text-white max-w-xs truncate" title={f.path}>
+                            <td className="py-3.5 px-4 font-semibold text-slate-900 dark:text-white max-w-sm truncate" title={f.path}>
                               {f.path}
                             </td>
-                            <td className="py-2.5 px-4">
-                              <span className="px-2 py-0.5 rounded-sm bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-semibold uppercase">
+                            <td className="py-3.5 px-4">
+                              <span className="px-2.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[11px] font-semibold uppercase">
                                 {f.category}
                               </span>
                             </td>
-                            <td className="py-2.5 px-4 font-mono">{formatBytes(f.size)}</td>
-                            <td className="py-2.5 px-4">
+                            <td className="py-3.5 px-4 font-mono whitespace-nowrap">{formatBytes(f.size)}</td>
+                            <td className="py-3.5 px-4">
                               {f.detectedSignature ? (
                                 <span className="text-emerald-600 dark:text-emerald-400 font-medium">
                                   {f.detectedSignature.label}
@@ -403,10 +403,10 @@ function ScannerContent() {
                                 <span className="text-slate-400">Generic</span>
                               )}
                             </td>
-                            <td className="py-2.5 px-4 font-mono text-[10px] text-slate-400 max-w-[120px] truncate" title={f.sha256}>
+                            <td className="py-3.5 px-4 font-mono text-xs text-slate-400 max-w-[140px] truncate" title={f.sha256}>
                               {f.sha256 || "—"}
                             </td>
-                            <td className="py-2.5 px-4 text-slate-400 text-[11px] whitespace-nowrap">
+                            <td className="py-3.5 px-4 text-slate-400 text-xs whitespace-nowrap">
                               {formatDate(f.lastModified)}
                             </td>
                           </tr>

@@ -163,11 +163,11 @@ export default function StorageManagerPage() {
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-            <HardDrive className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+            <HardDrive className="w-7 h-7 text-blue-600 dark:text-blue-400 shrink-0" />
             Storage Manager & Smart Cleanup
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+          <p className="text-sm sm:text-base text-slate-500 dark:text-slate-300 mt-1.5 max-w-2xl leading-relaxed">
             Desktop-grade storage breakdown, automated waste detection, file organization, and non-destructive virtual recycling bin.
           </p>
         </div>
@@ -175,20 +175,20 @@ export default function StorageManagerPage() {
         {trash.length > 0 && (
           <button
             onClick={() => setActiveTab("trash")}
-            className="px-3.5 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/80 text-xs font-semibold flex items-center gap-2 self-start cursor-pointer hover:bg-amber-100 transition-colors"
+            className="px-4 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/80 text-xs sm:text-sm font-semibold flex items-center gap-2 self-start cursor-pointer hover:bg-amber-100 transition-colors"
           >
-            <Trash2 className="w-3.5 h-3.5 text-amber-600" />
+            <Trash2 className="w-4 h-4 text-amber-600" />
             <span>Recycle Bin ({trash.length})</span>
           </button>
         )}
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1.5 border-b border-slate-200 dark:border-slate-800 pb-2">
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2.5 overflow-x-auto">
         <button
           onClick={() => setActiveTab("overview")}
           className={clsx(
-            "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
+            "px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer shrink-0",
             activeTab === "overview"
               ? "bg-blue-600 text-white shadow-2xs"
               : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -199,19 +199,19 @@ export default function StorageManagerPage() {
         <button
           onClick={() => setActiveTab("cleanup")}
           className={clsx(
-            "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer",
+            "px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shrink-0",
             activeTab === "cleanup"
               ? "bg-blue-600 text-white shadow-2xs"
               : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
           )}
         >
-          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+          <Sparkles className="w-4 h-4 text-amber-400" />
           <span>Smart Cleanup ({recommendations.length})</span>
         </button>
         <button
           onClick={() => setActiveTab("files")}
           className={clsx(
-            "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
+            "px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer shrink-0",
             activeTab === "files"
               ? "bg-blue-600 text-white shadow-2xs"
               : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -222,13 +222,13 @@ export default function StorageManagerPage() {
         <button
           onClick={() => setActiveTab("trash")}
           className={clsx(
-            "px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer",
+            "px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2 cursor-pointer shrink-0",
             activeTab === "trash"
               ? "bg-blue-600 text-white shadow-2xs"
               : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
           )}
         >
-          <Trash2 className="w-3.5 h-3.5" />
+          <Trash2 className="w-4 h-4" />
           <span>Recycle Bin ({trash.length})</span>
         </button>
       </div>
