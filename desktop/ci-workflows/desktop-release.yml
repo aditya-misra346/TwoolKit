@@ -1,4 +1,4 @@
-name: TwoolKit Desktop — Cross-Platform Build & Auto-Update Release
+name: TwoolKit Desktop — Cross-Platform Build, Code Signing, Notarization & Auto-Update Release
 
 on:
   push:
@@ -61,22 +61,22 @@ jobs:
         run: cargo test --verbose
 
   build-desktop-matrix:
-    name: Build Desktop (${{ matrix.label }})
+    name: Build, Sign & Verify Desktop (${{ matrix.label }})
     needs: rust-quality-gate
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - label: Windows x64 (NSIS + MSI)
+          - label: Windows x64 (Authenticode Signed NSIS + MSI)
             os: windows-latest
             target: x86_64-pc-windows-msvc
             args: --target x86_64-pc-windows-msvc
-          - label: macOS Apple Silicon (aarch64)
+          - label: macOS Apple Silicon (aarch64 Signed + Notarized DMG)
             os: macos-latest
             target: aarch64-apple-darwin
             args: --target aarch64-apple-darwin
-          - label: macOS Intel (x86_64)
+          - label: macOS Intel (x86_64 Signed + Notarized DMG)
             os: macos-latest
             target: x86_64-apple-darwin
             args: --target x86_64-apple-darwin
@@ -126,9 +126,37 @@ jobs:
         with:
           workspaces: 'desktop/src-tauri -> target'
 
+      - name: Import Apple Developer ID Certificate to Temporary Keychain (macOS)
+        if: matrix.os == 'macos-latest' && env.APPLE_CERTIFICATE != ''
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/twoolkit-signing.keychain-db
+          KEYCHAIN_PASS=$(uuidgen)
+          security create-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
+          echo "$APPLE_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
+          rm -f "$RUNNER_TEMP/certificate.p12"
+
       - name: Compile TwoolKit Desktop binary
         working-directory: desktop/src-tauri
         run: cargo build --release ${{ matrix.args }}
+
+      - name: Sign Windows Application Executable Before Packaging (Authenticode SHA-256 + RFC 3161 Timestamp)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE_PFX_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_PFX_BASE64 }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          ./desktop/scripts/windows_authenticode_sign.ps1 -TargetFiles @(
+            "desktop/src-tauri/target/${{ matrix.target }}/release/twoolkit-desktop.exe"
+          )
 
       - name: Package & Publish Signed Release (Tag / Dispatch)
         if: startsWith(github.ref, 'refs/tags/desktop-v') || github.event.inputs.publish_release == 'true'
@@ -137,6 +165,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_PATH: ${{ secrets.APPLE_API_KEY_PATH }}
         with:
           projectPath: desktop
           tagName: desktop-v__VERSION__
@@ -145,3 +180,23 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+
+      - name: Verify macOS Code Signature, Hardened Runtime, Entitlements & Notarization Ticket
+        if: matrix.os == 'macos-latest' && (startsWith(github.ref, 'refs/tags/desktop-v') || github.event.inputs.publish_release == 'true')
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          ./desktop/scripts/macos_sign_and_notarize.sh "${{ matrix.target }}"
+
+      - name: Sign & Verify Final Windows NSIS & MSI Installers (Authenticode SHA-256 + RFC 3161 Timestamp)
+        if: matrix.os == 'windows-latest' && (startsWith(github.ref, 'refs/tags/desktop-v') || github.event.inputs.publish_release == 'true')
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE_PFX_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_PFX_BASE64 }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $installers = Get-ChildItem -Path "desktop/src-tauri/target/${{ matrix.target }}/release/bundle" -Include "*.exe", "*.msi" -Recurse | Select-Object -ExpandProperty FullName
+          ./desktop/scripts/windows_authenticode_sign.ps1 -TargetFiles $installers

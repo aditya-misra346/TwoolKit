@@ -53,9 +53,15 @@
     "shortDescription": "All-in-one PDF, document conversion, image studio, file scanner & storage manager.",
     "longDescription": "TwoolKit Desktop combines 48 local and hybrid document, PDF, presentation, image, and storage tools with native OS filesystem integration and automatic synchronization with https://twoolkit.vercel.app.",
     "macOS": {
-      "minimumSystemVersion": "12.0"
+      "minimumSystemVersion": "12.0",
+      "hardenedRuntime": true,
+      "entitlements": "Entitlements.plist",
+      "signingIdentity": "-"
     },
     "windows": {
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "http://timestamp.acs.microsoft.com",
+      "tsp": true,
       "webviewInstallMode": {
         "type": "downloadBootstrapper",
         "silent": true
