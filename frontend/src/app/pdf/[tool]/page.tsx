@@ -554,7 +554,7 @@ export default function DedicatedPdfToolPage({ params }: Props) {
       setValidationError(null);
 
       // If user selected server mode but hasn't consented yet, show consent dialog
-      if (protectEngine === "server" && !cloudConsent) {
+      if (protectEngine === "server" && !useSettings.getState().cloudConsent) {
         setShowConsentModal(true);
         return;
       }
@@ -765,6 +765,11 @@ export default function DedicatedPdfToolPage({ params }: Props) {
     } else if (toolSlug === "to-svg") {
       serverOp = "pdf.to_svg";
       options = { pages: splitRange || undefined, password: password || undefined };
+    }
+
+    if (!fallbackFn && !useSettings.getState().cloudConsent) {
+      setShowConsentModal(true);
+      return;
     }
 
     enqueue(

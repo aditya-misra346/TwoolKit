@@ -66,12 +66,7 @@ function DocumentConverterContent() {
   const handleRunConversion = () => {
     if (files.length === 0) return;
 
-    const ext = extOf(files[0].name);
-    const isDataNative =
-      ["csv", "tsv", "json", "xml", "md"].includes(ext) &&
-      ["tsv", "json", "xml", "csv", "xlsx", "md", "html"].includes(targetFormat);
-
-    if (!isDataNative && !cloudConsent) {
+    if (!useSettings.getState().cloudConsent) {
       setShowConsentModal(true);
       return;
     }

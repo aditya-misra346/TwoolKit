@@ -143,7 +143,10 @@ function ImageStudioContent() {
   // Generate live processed preview on setting changes (debounced)
   useEffect(() => {
     if (!selectedFile) {
-      setProcessedPreviewUrl(null);
+      setProcessedPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
       setProcessedSize(null);
       setProcessedBlob(null);
       return;
@@ -170,7 +173,10 @@ function ImageStudioContent() {
 
         if (isMounted) {
           const url = URL.createObjectURL(res.blob);
-          setProcessedPreviewUrl(url);
+          setProcessedPreviewUrl((prev) => {
+            if (prev) URL.revokeObjectURL(prev);
+            return url;
+          });
           setProcessedSize(res.blob.size);
           setProcessedBlob(res.blob);
         }

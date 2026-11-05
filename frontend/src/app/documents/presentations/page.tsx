@@ -36,7 +36,7 @@ export default function PresentationStudioPage() {
   const handleRunPresentationTask = () => {
     if (files.length === 0) return;
 
-    if (!cloudConsent) {
+    if (!useSettings.getState().cloudConsent) {
       setShowConsentModal(true);
       return;
     }
