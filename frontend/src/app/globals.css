@@ -1,46 +1,29 @@
 @import "tailwindcss";
 
+@theme {
+  /* Calibrated Global Typography Scale — Noticeably Larger, Clearer & Balanced */
+  --text-2xs: 0.78125rem;     /* 12.5px (replaces tiny 9px/10px micro-captions) */
+  --text-2xs--line-height: 1.4;
+  --text-xs: 0.875rem;        /* 14px (up from 12px for metadata, badges & secondary labels) */
+  --text-xs--line-height: 1.45;
+  --text-sm: 0.96875rem;      /* 15.5px (up from 14px for controls, buttons, inputs & compact body) */
+  --text-sm--line-height: 1.55;
+  --text-base: 1.0625rem;     /* 17px (up from 16px for primary body copy & navigation) */
+  --text-base--line-height: 1.6;
+  --text-lg: 1.21875rem;      /* 19.5px (card headings & prominent subheadings) */
+  --text-lg--line-height: 1.4;
+  --text-xl: 1.4375rem;       /* 23px (major section headings) */
+  --text-xl--line-height: 1.3;
+  --text-2xl: 1.75rem;        /* 28px (tablet page titles & large metrics) */
+  --text-2xl--line-height: 1.22;
+  --text-3xl: 2.125rem;       /* 34px (desktop main page titles) */
+  --text-3xl--line-height: 1.18;
+  --text-4xl: 2.5rem;         /* 40px (hero display titles) */
+  --text-4xl--line-height: 1.14;
+}
+
 @layer base {
-  :root {
-    color-scheme: dark;
-    --background: #090b10;
-    --foreground: #f8fafc;
-    --card: #0f141f;
-    --card-foreground: #f8fafc;
-    --card-subtle: #161c2b;
-    --card-hover: #192133;
-    --popover: #0f141f;
-    --popover-foreground: #f8fafc;
-    --primary: #3b82f6;
-    --primary-hover: #60a5fa;
-    --primary-foreground: #ffffff;
-    --secondary: #161c2b;
-    --secondary-foreground: #f1f5f9;
-    --muted: #161c2b;
-    --muted-foreground: #94a3b8;
-    --accent: #1e293b;
-    --accent-foreground: #60a5fa;
-    --destructive: #dc2626;
-    --destructive-foreground: #fef2f2;
-    --border: #1e2638;
-    --border-subtle: #171d2b;
-    --input: #1e2638;
-    --ring: #60a5fa;
-    --radius: 0.875rem;
-
-    /* Category colors */
-    --c-docs: #60a5fa;
-    --c-images: #34d399;
-    --c-videos: #fbbf24;
-    --c-audio: #a78bfa;
-    --c-archives: #f472b6;
-    --c-slides: #fb923c;
-    --c-sheets: #10b981;
-    --c-pdf: #f87171;
-    --c-code: #22d3ee;
-    --c-other: #94a3b8;
-  }
-
+  :root,
   .dark {
     color-scheme: dark;
     --background: #090b10;
@@ -57,7 +40,7 @@
     --secondary: #161c2b;
     --secondary-foreground: #f1f5f9;
     --muted: #161c2b;
-    --muted-foreground: #94a3b8;
+    --muted-foreground: #cbd5e1;
     --accent: #1e293b;
     --accent-foreground: #60a5fa;
     --destructive: #dc2626;
@@ -66,8 +49,21 @@
     --border-subtle: #171d2b;
     --input: #1e2638;
     --ring: #60a5fa;
+    --radius: 0.875rem;
 
-    /* Dark mode category colors */
+    /* Typography Scale Custom Properties */
+    --font-display: clamp(1.875rem, 2.5vw + 1rem, 2.5rem);
+    --font-page-title: clamp(1.625rem, 1.8vw + 1.1rem, 2.125rem);
+    --font-section-title: clamp(1.25rem, 1vw + 0.95rem, 1.5625rem);
+    --font-card-title: clamp(1.0625rem, 0.4vw + 0.95rem, 1.25rem);
+    --font-body: clamp(0.96875rem, 0.25vw + 0.9rem, 1.0625rem);
+    --font-nav: clamp(0.96875rem, 0.2vw + 0.92rem, 1.0625rem);
+    --font-button: clamp(0.9375rem, 0.15vw + 0.88rem, 1rem);
+    --font-label: clamp(0.90625rem, 0.15vw + 0.86rem, 0.96875rem);
+    --font-meta: clamp(0.8125rem, 0.1vw + 0.78rem, 0.875rem);
+    --font-caption: clamp(0.75rem, 0.1vw + 0.72rem, 0.8125rem);
+
+    /* Category colors */
     --c-docs: #60a5fa;
     --c-images: #34d399;
     --c-videos: #fbbf24;
@@ -79,35 +75,151 @@
     --c-code: #22d3ee;
     --c-other: #94a3b8;
   }
+
+  html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-size: var(--font-body);
+    font-weight: 450;
+    line-height: 1.6;
+    font-feature-settings: "rlig" 1, "calt" 1, "cv11" 1;
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Global Heading Hierarchy */
+  h1 {
+    font-size: var(--font-page-title);
+    line-height: 1.18;
+    letter-spacing: -0.025em;
+    font-weight: 800;
+    color: #ffffff;
+  }
+
+  h2 {
+    font-size: var(--font-section-title);
+    line-height: 1.26;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    color: #f8fafc;
+  }
+
+  h3 {
+    font-size: var(--font-card-title);
+    line-height: 1.35;
+    letter-spacing: -0.015em;
+    font-weight: 700;
+    color: #f8fafc;
+  }
+
+  /* Improve form element readability & vertical clearance globally */
+  input,
+  select,
+  textarea {
+    font-size: var(--font-label);
+    line-height: 1.45;
+  }
+
+  button {
+    line-height: 1.35;
+  }
+
+  /* Upgrade micro-text utility classes so no label is ever unreadable */
+  .text-\[9px\] {
+    font-size: 0.75rem !important; /* 12px minimum */
+    line-height: 1.35 !important;
+    font-weight: 600;
+  }
+
+  .text-\[10px\] {
+    font-size: 0.8125rem !important; /* 13px */
+    line-height: 1.4 !important;
+  }
+
+  .text-\[11px\] {
+    font-size: 0.875rem !important; /* 14px */
+    line-height: 1.45 !important;
+  }
+
+  /* Boost muted slate contrast on dark surfaces for effortless reading */
+  .dark .text-slate-500,
+  .text-slate-500 {
+    color: #94a3b8;
+  }
+
+  .dark .text-slate-400,
+  .text-slate-400 {
+    color: #cbd5e1;
+  }
 }
 
-body {
-  background-color: var(--background);
-  color: var(--foreground);
-  font-feature-settings: "rlig" 1, "calt" 1, "cv11" 1;
-  letter-spacing: -0.011em;
+/* Semantic Typography Helper Classes */
+.ty-page-title {
+  font-size: var(--font-page-title);
+  font-weight: 800;
+  line-height: 1.18;
+  letter-spacing: -0.025em;
+}
+
+.ty-section-title {
+  font-size: var(--font-section-title);
+  font-weight: 700;
+  line-height: 1.26;
+  letter-spacing: -0.02em;
+}
+
+.ty-card-title {
+  font-size: var(--font-card-title);
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+}
+
+.ty-body {
+  font-size: var(--font-body);
+  font-weight: 450;
+  line-height: 1.6;
+}
+
+.ty-nav {
+  font-size: var(--font-nav);
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.ty-btn {
+  font-size: var(--font-button);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.ty-meta {
+  font-size: var(--font-meta);
+  font-weight: 500;
+  line-height: 1.45;
 }
 
 /* Glassmorphism & Surface Helpers */
-.glass-panel {
-  background: rgba(15, 20, 31, 0.85);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(30, 38, 56, 0.85);
-}
-
+.glass-panel,
 .dark .glass-panel {
-  background: rgba(15, 20, 31, 0.85);
+  background: rgba(15, 20, 31, 0.88);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(30, 38, 56, 0.85);
+  border: 1px solid rgba(30, 38, 56, 0.88);
 }
 
 /* Subtle Card Glow on Dark Mode */
 .card-elevated,
 .dark .card-elevated {
   background: #0f141f;
-  border: 1px solid rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
@@ -138,22 +250,22 @@ body {
 
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.28);
+  background: rgba(148, 163, 184, 0.3);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.45);
+  background: rgba(148, 163, 184, 0.5);
 }
 
 /* Selection Color */
 ::selection {
-  background: rgba(59, 130, 246, 0.25);
+  background: rgba(59, 130, 246, 0.3);
   color: inherit;
 }
