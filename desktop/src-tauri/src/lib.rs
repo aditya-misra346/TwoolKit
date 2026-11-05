@@ -318,7 +318,12 @@ pub fn run() {
                     let health = probe_endpoint_health(&target_url).await;
                     if !health.frontend_reachable {
                         if let Some(window) = app_handle.get_webview_window("main") {
-                            if let Ok(fallback_url) = "tauri://localhost/index.html".parse() {
+                            let fallback_url_str = if cfg!(target_os = "windows") {
+                                "http://tauri.localhost/index.html"
+                            } else {
+                                "tauri://localhost/index.html"
+                            };
+                            if let Ok(fallback_url) = fallback_url_str.parse() {
                                 let _ = window.navigate(fallback_url);
                             }
                         }

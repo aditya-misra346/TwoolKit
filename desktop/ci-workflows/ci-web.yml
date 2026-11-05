@@ -69,10 +69,10 @@ jobs:
           cache: 'pip'
           cache-dependency-path: backend/requirements.txt
 
-      - name: Install system PDF/image libraries
+      - name: Install system PDF/image/office libraries
         run: |
           sudo apt-get update
-          sudo apt-get install -y qpdf libmagic1
+          sudo apt-get install -y qpdf libmagic1 libreoffice ffmpeg
 
       - name: Install Python dependencies
         run: |
@@ -80,5 +80,12 @@ jobs:
           pip install -r requirements.txt
           pip install httpx
 
-      - name: Run backend smoke test suite
-        run: python tests/smoke_test.py
+      - name: Start FastAPI background server
+        run: |
+          nohup python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          sleep 3
+
+      - name: Run backend QA audit and smoke test suites
+        run: |
+          python tests/smoke_test.py
+          python tests/qa_full_audit.py
