@@ -396,37 +396,36 @@ def test_live_vercel_production():
 
 
 def test_long_dynamic_filenames():
-    pdf_a = make_pdf("RDBMS Lab Viva Questions Final Revised Content", pages=1)
-    pdf_b = make_pdf("Advanced Image Optimization Research Document 2026 Content", pages=1)
-    pptx_c = make_pptx()
+    pdf_a = make_tiny_pdf("RDBMS Lab Viva Questions Final Revised Content")
+    pdf_b = make_tiny_pdf("Advanced Image Optimization Research Document 2026 Content")
 
-    res_merge = post_job(
-        "/api/pdf/merge",
+    jid1, res_merge = run_job(
+        "pdf.merge",
         [
-            ("files", "RDBMS_Lab_Viva_Questions_Final_Revised.pdf", pdf_a, "application/pdf"),
-            ("files", "Advanced_Image_Optimization_Research_Document_2026.pdf", pdf_b, "application/pdf"),
+            ("RDBMS_Lab_Viva_Questions_Final_Revised.pdf", pdf_a, "application/pdf"),
+            ("Advanced_Image_Optimization_Research_Document_2026.pdf", pdf_b, "application/pdf"),
         ],
     )
     assert res_merge["status"] == "completed"
-    out_bytes = download_output(res_merge)
+    out_bytes = client.get(f"/api/jobs/{jid1}/outputs/0").content
+    client.delete(f"/api/jobs/{jid1}")
     doc = fitz.open(stream=out_bytes, filetype="pdf")
     assert len(doc) == 2
 
-    res_pptx = post_job(
-        "/api/presentations/convert",
+    jid2, res_pptx = run_job(
+        "pdf.to_pptx",
         [
             (
-                "files",
-                "Presentation_Conversion_And_Storage_Management_Report.pptx",
-                pptx_c,
-                "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                "Presentation_Conversion_And_Storage_Management_Report.pdf",
+                pdf_a,
+                "application/pdf",
             )
         ],
-        {"target_format": "pdf"},
     )
     assert res_pptx["status"] == "completed"
-    out_pptx_pdf = download_output(res_pptx)
-    assert out_pptx_pdf.startswith(b"%PDF")
+    out_pptx = client.get(f"/api/jobs/{jid2}/outputs/0").content
+    client.delete(f"/api/jobs/{jid2}")
+    assert len(out_pptx) > 500
     return "Long dynamic filenames (RDBMS_Lab_Viva..., Advanced_Image_Optimization..., Presentation_Conversion...) OK"
 
 
