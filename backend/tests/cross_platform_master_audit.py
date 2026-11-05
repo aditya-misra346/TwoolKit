@@ -275,7 +275,18 @@ def test_live_vercel():
         assert r.status == 200
         html = r.read().decode("utf-8", errors="ignore")
         assert 'class="h-full dark"' in html
-    return "Live https://twoolkit.vercel.app verified (HTTP 200, CORS, Dark Mode)"
+        assert 'property="og:image" content="https://twoolkit.vercel.app/og-image.png"' in html
+        assert 'property="og:image:width" content="1200"' in html
+        assert 'property="og:image:height" content="630"' in html
+        assert 'name="twitter:card" content="summary_large_image"' in html
+    with urllib.request.urlopen(f"{LIVE_VERCEL_BASE}/og-image.png", timeout=15, context=ctx) as r:
+        assert r.status == 200
+        im = Image.open(io.BytesIO(r.read()))
+        assert im.size == (1200, 630)
+        assert im.mode == "RGB"
+        px = im.getpixel((600, int(630 * 0.23)))
+        assert px[2] > 150, f"Expected bright cobalt/cyan logo pixel, got {px}"
+    return "Live https://twoolkit.vercel.app verified (HTTP 200, CORS, Dark Mode, 1200x630 OG Logo)"
 
 run_check("PHASE 3", "Live Vercel Production Verification", test_live_vercel)
 
