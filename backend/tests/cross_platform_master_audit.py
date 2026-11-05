@@ -181,8 +181,11 @@ def test_phase1_vercel_config():
     return "vercel.json cleanly maps root to frontend Next.js service"
 
 def test_phase1_github_actions():
-    ci_web = (ROOT / ".github" / "workflows" / "ci-web.yml").read_text(encoding="utf-8")
-    desk_rel = (ROOT / ".github" / "workflows" / "desktop-release.yml").read_text(encoding="utf-8")
+    wf_dir = ROOT / ".github" / "workflows"
+    if not (wf_dir / "ci-web.yml").exists():
+        wf_dir = DESKTOP_ROOT / "ci-workflows"
+    ci_web = (wf_dir / "ci-web.yml").read_text(encoding="utf-8")
+    desk_rel = (wf_dir / "desktop-release.yml").read_text(encoding="utf-8")
     assert "frontend-verify" in ci_web
     assert "backend-verify" in ci_web
     assert "build-desktop-matrix" in desk_rel
