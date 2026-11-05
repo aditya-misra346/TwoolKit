@@ -39,7 +39,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <main className="flex-1 overflow-y-auto">
           <div className="min-h-full flex flex-col justify-between">
-            <div className="max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 flex-1">
+            <div className="max-w-[1440px] w-full mx-auto p-4 sm:p-6 lg:p-8 xl:p-10 flex-1">
               {children}
             </div>
             <Footer />
