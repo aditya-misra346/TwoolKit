@@ -182,7 +182,7 @@ async def create_job(request: Request):
         return JSONResponse({"error": f"Upload too large (max {config.MAX_JOB_TOTAL_MB} MB per job)."}, status_code=413)
 
     try:
-        form = await request.form(max_files=config.MAX_FILES_PER_JOB, max_fields=10, max_part_size=64 * 1024)
+        form = await request.form(max_files=config.MAX_FILES_PER_JOB + 5, max_fields=20, max_part_size=256 * 1024)
     except Exception as exc:
         return JSONResponse({"error": f"Malformed upload: {exc}"}, status_code=400)
 
