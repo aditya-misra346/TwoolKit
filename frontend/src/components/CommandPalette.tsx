@@ -69,12 +69,12 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col"
+        className="w-full max-w-2xl bg-slate-900 rounded-2xl shadow-2xl border border-slate-800 overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Input Bar */}
-        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-200 dark:border-slate-800">
-          <Search className="w-4 h-4 text-slate-400 shrink-0" />
+        <div className="flex items-center gap-3.5 px-5 py-4 border-b border-slate-800">
+          <Search className="w-5 h-5 text-slate-400 shrink-0" />
           <input
             ref={inputRef}
             type="text"
@@ -85,7 +85,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
               setSelectedIndex(0);
             }}
             autoFocus
-            className="flex-1 bg-transparent text-sm font-medium text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden"
+            className="flex-1 bg-transparent text-base font-medium text-white placeholder:text-slate-400 focus:outline-hidden"
           />
           {query && (
             <button
@@ -134,8 +134,8 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                       <Icon className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <div className="font-semibold text-xs truncate">{tool.name}</div>
-                      <div className="text-[11px] text-slate-400 dark:text-slate-500 truncate">
+                      <div className="font-semibold text-sm text-white truncate">{tool.name}</div>
+                      <div className="text-xs text-slate-300 truncate mt-0.5">
                         {tool.description}
                       </div>
                     </div>

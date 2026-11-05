@@ -84,19 +84,19 @@ export function TaskDrawer() {
       onClick={() => setDrawer(false)}
     >
       <div
-        className="w-full max-w-xl bg-white dark:bg-slate-900 h-full shadow-2xl border-l border-slate-200 dark:border-slate-800 flex flex-col"
+        className="w-full max-w-2xl bg-slate-900 h-full shadow-2xl border-l border-slate-800 flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div className="p-5 sm:p-6 border-b border-slate-800 flex items-center justify-between">
           <div>
-            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2.5">
               Processing Queue
-              <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-950 text-blue-300 border border-blue-800/70">
                 {order.length}
               </span>
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-xs sm:text-sm text-slate-300 mt-0.5">
               Live batch execution & download manager
             </p>
           </div>
@@ -202,11 +202,14 @@ export function TaskDrawer() {
                         >
                           <div className="flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className="font-medium text-slate-800 dark:text-slate-200 truncate">
+                              <span
+                                className="font-semibold text-slate-100 truncate text-xs sm:text-sm"
+                                title={task.label}
+                              >
                                 {task.label}
                               </span>
                               {task.inputSize && (
-                                <span className="text-[10px] text-slate-400 font-mono">
+                                <span className="text-2xs text-slate-300 font-mono shrink-0">
                                   ({formatBytes(task.inputSize)})
                                 </span>
                               )}
@@ -265,10 +268,11 @@ export function TaskDrawer() {
                                   key={i}
                                   href={out.url}
                                   download={out.name}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100 transition-colors font-medium text-[11px]"
+                                  title={out.name}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-950/50 text-emerald-200 border border-emerald-800/70 hover:bg-emerald-900/50 transition-colors font-semibold text-xs"
                                 >
-                                  <Download className="w-3 h-3 text-emerald-600" />
-                                  <span className="truncate max-w-[200px]">{out.name}</span>
+                                  <Download className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                  <span className="truncate max-w-[260px]">{out.name}</span>
                                 </a>
                               ))}
                             </div>
