@@ -388,85 +388,87 @@ export default function StorageManagerPage() {
           </div>
 
           <div className="rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-400 font-semibold uppercase tracking-wider text-[10px] border-b border-slate-200 dark:border-slate-800">
-                <tr>
-                  <th className="py-2.5 px-4">Filename / Path</th>
-                  <th className="py-2.5 px-4">Size</th>
-                  <th className="py-2.5 px-4">Category</th>
-                  <th className="py-2.5 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {!currentScan || currentScan.files.length === 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs sm:text-sm">
+                <thead className="bg-slate-50 dark:bg-slate-800/50 text-slate-400 font-semibold uppercase tracking-wider text-[11px] border-b border-slate-200 dark:border-slate-800">
                   <tr>
-                    <td colSpan={4} className="py-8 text-center text-slate-400">
-                      No files currently loaded. Scan a folder in the File Scanner first.
-                    </td>
+                    <th className="py-3 px-4">Filename / Path</th>
+                    <th className="py-3 px-4">Size</th>
+                    <th className="py-3 px-4">Category</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
-                ) : filteredFileManagerFiles.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="py-8 text-center text-slate-400">
-                      No files match &quot;{fileSearch}&quot;.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredFileManagerFiles.map((file) => (
-                    <tr key={file.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
-                      <td className="py-2.5 px-4 font-medium text-slate-900 dark:text-white max-w-sm">
-                        {renamingId === file.id ? (
-                          <div className="flex items-center gap-1.5">
-                            <input
-                              type="text"
-                              value={renameVal}
-                              onChange={(e) => setRenameVal(e.target.value)}
-                              autoFocus
-                              className="px-2 py-0.5 rounded border border-blue-500 text-xs w-full bg-white dark:bg-slate-800 focus:outline-hidden"
-                            />
-                            <button
-                              onClick={() => handleSaveRename(file.id)}
-                              className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => setRenamingId(null)}
-                              className="p-1 text-slate-400 hover:bg-slate-100 rounded"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="truncate block" title={file.path}>
-                            {file.path}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2.5 px-4 font-mono">{formatBytes(file.size)}</td>
-                      <td className="py-2.5 px-4 uppercase text-[10px] text-slate-500 font-semibold">
-                        {file.category}
-                      </td>
-                      <td className="py-2.5 px-4 text-right space-x-1.5">
-                        <button
-                          onClick={() => handleStartRename(file.id, file.name)}
-                          className="text-slate-400 hover:text-blue-600 p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-                          title="Rename file"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => moveToTrash([file.id], "Manual deletion")}
-                          className="text-slate-400 hover:text-rose-500 p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-                          title="Move to Recycle Bin"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {!currentScan || currentScan.files.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-8 text-center text-slate-400">
+                        No files currently loaded. Scan a folder in the File Scanner first.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : filteredFileManagerFiles.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-8 text-center text-slate-400">
+                        No files match &quot;{fileSearch}&quot;.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredFileManagerFiles.map((file) => (
+                      <tr key={file.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                        <td className="py-3.5 px-4 font-semibold text-slate-900 dark:text-white max-w-sm">
+                          {renamingId === file.id ? (
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="text"
+                                value={renameVal}
+                                onChange={(e) => setRenameVal(e.target.value)}
+                                autoFocus
+                                className="px-2.5 py-1 rounded border border-blue-500 text-xs sm:text-sm w-full bg-white dark:bg-slate-800 focus:outline-hidden"
+                              />
+                              <button
+                                onClick={() => handleSaveRename(file.id)}
+                                className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded"
+                              >
+                                <Check className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setRenamingId(null)}
+                                className="p-1.5 text-slate-400 hover:bg-slate-100 rounded"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="truncate block" title={file.path}>
+                              {file.path}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-4 font-mono whitespace-nowrap">{formatBytes(file.size)}</td>
+                        <td className="py-3.5 px-4 uppercase text-xs text-slate-400 font-semibold">
+                          {file.category}
+                        </td>
+                        <td className="py-3.5 px-4 text-right space-x-2 whitespace-nowrap">
+                          <button
+                            onClick={() => handleStartRename(file.id, file.name)}
+                            className="text-slate-400 hover:text-blue-600 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                            title="Rename file"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => moveToTrash([file.id], "Manual deletion")}
+                            className="text-slate-400 hover:text-rose-500 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                            title="Move to Recycle Bin"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}

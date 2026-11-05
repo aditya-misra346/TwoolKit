@@ -153,19 +153,19 @@ function OrganizerContent() {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-150">
+    <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in duration-150">
       <div>
-        <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-          <FolderTree className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+          <FolderTree className="w-7 h-7 text-indigo-600 dark:text-indigo-400 shrink-0" />
           File Organizer & Batch Rule Studio
         </h1>
-        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+        <p className="text-sm sm:text-base text-slate-500 dark:text-slate-300 mt-1.5 max-w-2xl leading-relaxed">
           Batch rename with live previews, group files by category folders, and safely create or extract ZIP archives with Zip-Slip protection.
         </p>
       </div>
 
       {/* Mode Selector Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
         {[
           { id: "rename", label: "Batch Rename", icon: Edit3, desc: "Prefix, suffix, numbering, find & replace" },
           { id: "categorize", label: "Auto-Sort Folders", icon: FolderPlus, desc: "Group into Documents, Images, etc." },
@@ -179,17 +179,17 @@ function OrganizerContent() {
               type="button"
               onClick={() => setMode(item.id as any)}
               className={clsx(
-                "p-3.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between",
+                "p-4 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between",
                 mode === item.id
                   ? "border-indigo-500 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-950 dark:text-indigo-100 font-bold shadow-2xs"
                   : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300"
               )}
             >
               <div>
-                <Icon className="w-4 h-4 text-indigo-600 dark:text-indigo-400 mb-1.5" />
-                <div className="text-xs font-bold">{item.label}</div>
+                <Icon className="w-5 h-5 text-indigo-600 dark:text-indigo-400 mb-2" />
+                <div className="text-sm font-bold">{item.label}</div>
               </div>
-              <div className="text-[10px] text-slate-400 mt-1 leading-tight line-clamp-2">
+              <div className="text-xs text-slate-400 mt-1.5 leading-snug line-clamp-2">
                 {item.desc}
               </div>
             </button>
