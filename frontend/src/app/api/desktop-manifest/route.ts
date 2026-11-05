@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 export const DESKTOP_RELEASE_VERSION = "1.2.0";
 export const MIN_REQUIRED_DESKTOP_VERSION = "1.0.0";
-export const RELEASE_DATE = "2026-11-04";
+export const RELEASE_DATE = "2026-11-05";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -19,9 +19,10 @@ export async function GET() {
   const gitSha =
     process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ||
     process.env.NEXT_PUBLIC_GIT_SHA ||
-    "e708bad";
+    "6c65a6c";
 
   const githubReleaseBase = `https://github.com/aditya-misra346/TwoolKit/releases/download/desktop-v${DESKTOP_RELEASE_VERSION}`;
+  const githubLatestBase = "https://github.com/aditya-misra346/TwoolKit/releases/latest/download";
 
   return NextResponse.json(
     {
@@ -32,28 +33,30 @@ export async function GET() {
       releaseDate: RELEASE_DATE,
       minDesktopVersion: MIN_REQUIRED_DESKTOP_VERSION,
       canonicalOrigin: "https://twoolkit.vercel.app",
-      updaterManifestUrl:
-        "https://github.com/aditya-misra346/TwoolKit/releases/latest/download/latest.json",
+      releasePageUrl: `https://github.com/aditya-misra346/TwoolKit/releases/tag/desktop-v${DESKTOP_RELEASE_VERSION}`,
+      checksumsUrl: `${githubReleaseBase}/SHA256SUMS.txt`,
+      updaterManifestUrl: `${githubLatestBase}/latest.json`,
       channels: {
         stable: {
           version: DESKTOP_RELEASE_VERSION,
           gitSha,
           minDesktopVersion: MIN_REQUIRED_DESKTOP_VERSION,
-          publishedAt: `${RELEASE_DATE}T20:00:00Z`,
+          publishedAt: `${RELEASE_DATE}T07:48:00Z`,
         },
         beta: {
           version: `${DESKTOP_RELEASE_VERSION}-beta.1`,
           gitSha,
           minDesktopVersion: MIN_REQUIRED_DESKTOP_VERSION,
-          publishedAt: `${RELEASE_DATE}T20:00:00Z`,
+          publishedAt: `${RELEASE_DATE}T07:48:00Z`,
         },
       },
       releaseNotes: [
-        "Unified Tauri 2 + Rust native desktop runtime for macOS, Windows, and Linux.",
+        "Verified Windows 11 / 10 (64-bit x86_64) NSIS Installer (TwoolKit_1.2.0_x64-setup.exe) and Portable ZIP package with automatic WebView2 bootstrapping.",
+        "Unified Tauri 2 + Rust native desktop runtime for Windows and macOS (Apple Silicon aarch64 & Intel x86_64).",
         "Automatic live website synchronization with https://twoolkit.vercel.app without full reinstallation.",
         "Scoped native filesystem integration: native Open/Save dialogs, recursive folder scanning with SHA-256 hashing, and direct output saving.",
         "Multi-view interactive storage analytics (Donut, Pie, and Bar charts) and 48 built-in PDF, Document, Presentation, Image, and Security tools.",
-        "Ed25519 cryptographically signed native desktop updater with automatic rollback protection.",
+        "Ed25519 cryptographically signed native desktop updater (latest.json) with SHA-256 checksum verification.",
       ],
       installers: {
         macos: [
@@ -63,8 +66,11 @@ export async function GET() {
             arch: "aarch64",
             format: ".dmg",
             filename: `TwoolKit_${DESKTOP_RELEASE_VERSION}_aarch64.dmg`,
-            sizeMB: 8.4,
+            sizeMB: 6.4,
+            sha256: "20ee0f84d6237500b58ee9b6d3f7fd2b9e30f340e3cc4ff75f6b974d8301be62",
+            verified: true,
             url: `${githubReleaseBase}/TwoolKit_${DESKTOP_RELEASE_VERSION}_aarch64.dmg`,
+            latestUrl: `${githubLatestBase}/TwoolKit_${DESKTOP_RELEASE_VERSION}_aarch64.dmg`,
           },
           {
             id: "macos-x64-dmg",
@@ -72,8 +78,11 @@ export async function GET() {
             arch: "x86_64",
             format: ".dmg",
             filename: `TwoolKit_${DESKTOP_RELEASE_VERSION}_x64.dmg`,
-            sizeMB: 8.9,
+            sizeMB: 6.7,
+            sha256: "857dc664fd92382c5c504843d6b99c4d19129f7a8858b2dc1c2649807c07943f",
+            verified: true,
             url: `${githubReleaseBase}/TwoolKit_${DESKTOP_RELEASE_VERSION}_x64.dmg`,
+            latestUrl: `${githubLatestBase}/TwoolKit_${DESKTOP_RELEASE_VERSION}_x64.dmg`,
           },
         ],
         windows: [
@@ -83,57 +92,38 @@ export async function GET() {
             arch: "x86_64",
             format: ".exe",
             filename: `TwoolKit_${DESKTOP_RELEASE_VERSION}_x64-setup.exe`,
-            sizeMB: 6.2,
+            sizeMB: 6.4,
+            sha256: "ef2727e30a4c714bf9825c6ba1ef51d0e996a7144406150a5f80f5ca48a6b5df",
+            verified: true,
             url: `${githubReleaseBase}/TwoolKit_${DESKTOP_RELEASE_VERSION}_x64-setup.exe`,
+            latestUrl: `${githubLatestBase}/TwoolKit_${DESKTOP_RELEASE_VERSION}_x64-setup.exe`,
           },
           {
-            id: "windows-x64-msi",
-            label: "Windows 11 / 10 (64-bit Enterprise MSI)",
+            id: "windows-x64-portable",
+            label: "Windows 11 / 10 (64-bit Portable ZIP — No Install Required)",
             arch: "x86_64",
-            format: ".msi",
-            filename: `TwoolKit_${DESKTOP_RELEASE_VERSION}_x64_en-US.msi`,
-            sizeMB: 7.1,
-            url: `${githubReleaseBase}/TwoolKit_${DESKTOP_RELEASE_VERSION}_x64_en-US.msi`,
+            format: ".zip",
+            filename: `TwoolKit_${DESKTOP_RELEASE_VERSION}_x64-portable.zip`,
+            sizeMB: 9.2,
+            sha256: "b6eb6826be76e4a8d96e679db453fb6002b2a47a675a6f92a35cf1efbe1ec3a4",
+            verified: true,
+            url: `${githubReleaseBase}/TwoolKit_${DESKTOP_RELEASE_VERSION}_x64-portable.zip`,
+            latestUrl: `${githubLatestBase}/TwoolKit_${DESKTOP_RELEASE_VERSION}_x64-portable.zip`,
           },
           {
-            id: "windows-arm64-exe",
-            label: "Windows (ARM64 Installer)",
+            id: "windows-arm64-compat",
+            label: "Windows on ARM (Snapdragon X / ARM64 via x64 Installer)",
             arch: "aarch64",
             format: ".exe",
-            filename: `TwoolKit_${DESKTOP_RELEASE_VERSION}_arm64-setup.exe`,
-            sizeMB: 6.0,
-            url: `${githubReleaseBase}/TwoolKit_${DESKTOP_RELEASE_VERSION}_arm64-setup.exe`,
+            filename: `TwoolKit_${DESKTOP_RELEASE_VERSION}_x64-setup.exe`,
+            sizeMB: 6.4,
+            sha256: "ef2727e30a4c714bf9825c6ba1ef51d0e996a7144406150a5f80f5ca48a6b5df",
+            verified: true,
+            url: `${githubReleaseBase}/TwoolKit_${DESKTOP_RELEASE_VERSION}_x64-setup.exe`,
+            latestUrl: `${githubLatestBase}/TwoolKit_${DESKTOP_RELEASE_VERSION}_x64-setup.exe`,
           },
         ],
-        linux: [
-          {
-            id: "linux-x64-appimage",
-            label: "Linux AppImage (Universal x86_64 · Auto-Update Enabled)",
-            arch: "x86_64",
-            format: ".AppImage",
-            filename: `TwoolKit_${DESKTOP_RELEASE_VERSION}_amd64.AppImage`,
-            sizeMB: 74.5,
-            url: `${githubReleaseBase}/TwoolKit_${DESKTOP_RELEASE_VERSION}_amd64.AppImage`,
-          },
-          {
-            id: "linux-x64-deb",
-            label: "Ubuntu / Debian Package (amd64 .deb)",
-            arch: "x86_64",
-            format: ".deb",
-            filename: `TwoolKit_${DESKTOP_RELEASE_VERSION}_amd64.deb`,
-            sizeMB: 8.1,
-            url: `${githubReleaseBase}/TwoolKit_${DESKTOP_RELEASE_VERSION}_amd64.deb`,
-          },
-          {
-            id: "linux-x64-rpm",
-            label: "Fedora / RHEL Package (x86_64 .rpm)",
-            arch: "x86_64",
-            format: ".rpm",
-            filename: `TwoolKit-${DESKTOP_RELEASE_VERSION}-1.x86_64.rpm`,
-            sizeMB: 8.2,
-            url: `${githubReleaseBase}/TwoolKit-${DESKTOP_RELEASE_VERSION}-1.x86_64.rpm`,
-          },
-        ],
+        linux: [],
       },
     },
     { headers: CORS_HEADERS }

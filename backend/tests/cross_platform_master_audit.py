@@ -218,9 +218,14 @@ def test_phase2_desktop_manifest():
         data = json.loads(r.read().decode("utf-8"))
         assert data["appVersion"] == "1.2.0"
         assert len(data["installers"]["macos"]) >= 2  # arm64 + x64
-        assert len(data["installers"]["windows"]) >= 2  # x64 nsis + msi
-        assert len(data["installers"]["linux"]) >= 3  # appimage + deb + tar.gz
-        return "Manifest serves verified download artifacts for macOS (arm64, x64), Windows (x64, ARM64), Linux (x64)"
+        assert len(data["installers"]["windows"]) >= 2  # x64 nsis + portable
+        win_url = data["installers"]["windows"][0]["url"]
+        req = urllib.request.Request(win_url, method="HEAD", headers={"User-Agent": "TwoolKit-Audit/1.2.0"})
+        with urllib.request.urlopen(req, timeout=15) as hr:
+            assert hr.status == 200, f"Windows installer URL returned HTTP {hr.status}"
+            clen = int(hr.headers.get("Content-Length", "0"))
+            assert clen > 5_000_000, f"Windows installer size too small: {clen}"
+        return f"Manifest serves live verified Windows ({clen:,} B) & macOS installers"
 
 run_check("PHASE 2", "Tauri Bundle Target Matrix (macOS/Win/Linux)", test_phase2_os_matrix)
 run_check("PHASE 2", "Desktop Manifest Installer Payloads", test_phase2_desktop_manifest)

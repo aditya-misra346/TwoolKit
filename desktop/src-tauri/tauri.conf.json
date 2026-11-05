@@ -54,13 +54,23 @@
     "longDescription": "TwoolKit Desktop combines 48 local and hybrid document, PDF, presentation, image, and storage tools with native OS filesystem integration and automatic synchronization with https://twoolkit.vercel.app.",
     "macOS": {
       "minimumSystemVersion": "12.0"
+    },
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "installerIcon": "icons/icon.ico"
+      }
     }
   },
   "plugins": {
     "updater": {
       "active": true,
       "dialog": false,
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhGNkI0RTRDMkFBMDFGRkUKUldUK0Q2QXFUVTlyajZYRUpXOWFqU1haT2xmcW12TzBuU1l1Vm50U1dHVnBLVDFZSWtwc1d6T3AK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE0RTAxNjA3NzA0NEY0NTgKUldSWTlFUndCeGJnRk12MitmazlYTWhSRXZYTUVxSml5VjArVEFHa1ZIcEc4NVFhTURZZkw3SHgK",
       "endpoints": [
         "https://github.com/aditya-misra346/TwoolKit/releases/latest/download/latest.json"
       ]
