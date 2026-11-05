@@ -369,14 +369,30 @@ def test_frontend_api_routes():
             if path == "/api/capabilities":
                 assert data["limits"]["maxFilesPerJob"] == 50
             elif path == "/api/desktop-manifest":
-                assert data["version"] == "1.2.0"
-                assert "darwin-aarch64" in data["platforms"]
-                assert "windows-x86_64" in data["platforms"]
-                assert "linux-x86_64" in data["platforms"]
+                assert data["appVersion"] == "1.2.0"
+                assert "macos" in data["installers"]
+                assert "windows" in data["installers"]
+                assert "linux" in data["installers"]
     return "health, capabilities (50 max files), desktop-manifest OK"
 
 
+def test_live_vercel_production():
+    with urllib.request.urlopen("https://twoolkit.vercel.app/api/health", timeout=15) as resp:
+        assert resp.status == 200
+        assert resp.headers.get("access-control-allow-origin") == "*"
+    with urllib.request.urlopen("https://twoolkit.vercel.app/api/desktop-manifest", timeout=15) as resp:
+        assert resp.status == 200
+        data = json.loads(resp.read().decode("utf-8"))
+        assert data["appVersion"] == "1.2.0"
+    with urllib.request.urlopen("https://twoolkit.vercel.app/", timeout=15) as resp:
+        assert resp.status == 200
+        html = resp.read().decode("utf-8", errors="ignore")
+        assert 'class="h-full dark"' in html
+    return "twoolkit.vercel.app live + CORS + Dark Mode OK"
+
+
 check("Frontend API endpoints (/api/health, /capabilities, /desktop-manifest)", test_frontend_api_routes)
+check("Live Vercel Production (https://twoolkit.vercel.app) verification", test_live_vercel_production)
 
 print(f"\nSUMMARY: {PASSED} passed, {FAILED} failed")
 sys.exit(1 if FAILED else 0)
