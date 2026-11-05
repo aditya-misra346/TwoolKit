@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-11-05T05:46:21Z",
+  "timestamp": "2026-11-05T07:55:02Z",
   "total": 49,
   "passed": 49,
   "failed": 0,
@@ -9,266 +9,266 @@
       "phase": "PHASE 1",
       "name": "Package and Configuration Version Alignment",
       "status": "PASS",
-      "durationMs": 0.2,
+      "durationMs": 0.5,
       "detail": "All root, desktop, cargo, and tauri versions aligned to v1.2.0"
     },
     {
       "phase": "PHASE 1",
       "name": "Vercel Production Deployment Configuration",
       "status": "PASS",
-      "durationMs": 0.0,
+      "durationMs": 0.1,
       "detail": "vercel.json cleanly maps root to frontend Next.js service"
     },
     {
       "phase": "PHASE 1",
       "name": "GitHub Actions Multi-OS CI Workflows",
       "status": "PASS",
-      "durationMs": 0.3,
+      "durationMs": 0.2,
       "detail": "GitHub Actions CI workflows configured for Frontend, Backend, macOS, Windows, Linux"
     },
     {
       "phase": "PHASE 2",
       "name": "Tauri Bundle Target Matrix (macOS/Win/Linux)",
       "status": "PASS",
-      "durationMs": 0.0,
+      "durationMs": 0.1,
       "detail": "Supported targets: macOS (dmg, app), Windows (nsis, msi), Linux (appimage, deb, rpm)"
     },
     {
       "phase": "PHASE 2",
       "name": "Desktop Manifest Installer Payloads",
       "status": "PASS",
-      "durationMs": 6.9,
-      "detail": "Manifest serves verified download artifacts for macOS (arm64, x64), Windows (x64, ARM64), Linux (x64)"
+      "durationMs": 15911.3,
+      "detail": "Manifest serves live verified Windows (6,756,356 B) & macOS installers"
     },
     {
       "phase": "PHASE 3",
       "name": "Next.js Route GET /",
       "status": "PASS",
-      "durationMs": 1.8,
+      "durationMs": 5.9,
       "detail": "HTTP 200 \u00b7 Dark Mode OK (50924 bytes)"
     },
     {
       "phase": "PHASE 3",
       "name": "Next.js Route GET /scanner",
       "status": "PASS",
-      "durationMs": 0.9,
+      "durationMs": 3.0,
       "detail": "HTTP 200 \u00b7 Dark Mode OK (51421 bytes)"
     },
     {
       "phase": "PHASE 3",
       "name": "Next.js Route GET /storage",
       "status": "PASS",
-      "durationMs": 0.9,
+      "durationMs": 2.2,
       "detail": "HTTP 200 \u00b7 Dark Mode OK (64423 bytes)"
     },
     {
       "phase": "PHASE 3",
       "name": "Next.js Route GET /organizer",
       "status": "PASS",
-      "durationMs": 0.7,
+      "durationMs": 1.6,
       "detail": "HTTP 200 \u00b7 Dark Mode OK (51443 bytes)"
     },
     {
       "phase": "PHASE 3",
       "name": "Next.js Route GET /pdf",
       "status": "PASS",
-      "durationMs": 0.9,
+      "durationMs": 2.0,
       "detail": "HTTP 200 \u00b7 Dark Mode OK (100315 bytes)"
     },
     {
       "phase": "PHASE 3",
       "name": "Next.js Route GET /pdf/merge",
       "status": "PASS",
-      "durationMs": 5.0,
+      "durationMs": 12.3,
       "detail": "HTTP 200 \u00b7 Dark Mode OK (56020 bytes)"
     },
     {
       "phase": "PHASE 3",
       "name": "Next.js Route GET /pdf/split",
       "status": "PASS",
-      "durationMs": 3.9,
+      "durationMs": 7.8,
       "detail": "HTTP 200 \u00b7 Dark Mode OK (56014 bytes)"
     },
     {
       "phase": "PHASE 3",
       "name": "Next.js Route GET /pdf/to-word",
       "status": "PASS",
-      "durationMs": 4.0,
+      "durationMs": 7.5,
       "detail": "HTTP 200 \u00b7 Dark Mode OK (56059 bytes)"
     },
     {
       "phase": "PHASE 3",
       "name": "Next.js Route GET /pdf/protect",
       "status": "PASS",
-      "durationMs": 4.0,
+      "durationMs": 7.1,
       "detail": "HTTP 200 \u00b7 Dark Mode OK (56017 bytes)"
     },
     {
       "phase": "PHASE 3",
       "name": "Next.js Route GET /pdf/unlock",
       "status": "PASS",
-      "durationMs": 3.7,
+      "durationMs": 7.8,
       "detail": "HTTP 200 \u00b7 Dark Mode OK (56005 bytes)"
     },
     {
       "phase": "PHASE 3",
       "name": "Next.js Route GET /documents",
       "status": "PASS",
-      "durationMs": 1.1,
+      "durationMs": 1.6,
       "detail": "HTTP 200 \u00b7 Dark Mode OK (51452 bytes)"
     },
     {
       "phase": "PHASE 3",
       "name": "Next.js Route GET /documents/presentations",
       "status": "PASS",
-      "durationMs": 0.7,
+      "durationMs": 1.3,
       "detail": "HTTP 200 \u00b7 Dark Mode OK (56217 bytes)"
     },
     {
       "phase": "PHASE 3",
       "name": "Next.js Route GET /images",
       "status": "PASS",
-      "durationMs": 0.6,
+      "durationMs": 1.1,
       "detail": "HTTP 200 \u00b7 Dark Mode OK (51665 bytes)"
     },
     {
       "phase": "PHASE 3",
       "name": "Next.js Route GET /compress",
       "status": "PASS",
-      "durationMs": 0.7,
+      "durationMs": 1.1,
       "detail": "HTTP 200 \u00b7 Dark Mode OK (55616 bytes)"
     },
     {
       "phase": "PHASE 3",
       "name": "Next.js Route GET /assistant",
       "status": "PASS",
-      "durationMs": 0.7,
+      "durationMs": 1.1,
       "detail": "HTTP 200 \u00b7 Dark Mode OK (58798 bytes)"
     },
     {
       "phase": "PHASE 3",
       "name": "Next.js Route GET /recent",
       "status": "PASS",
-      "durationMs": 0.7,
+      "durationMs": 1.1,
       "detail": "HTTP 200 \u00b7 Dark Mode OK (54636 bytes)"
     },
     {
       "phase": "PHASE 3",
       "name": "Next.js Route GET /brand",
       "status": "PASS",
-      "durationMs": 0.8,
+      "durationMs": 1.5,
       "detail": "HTTP 200 \u00b7 Dark Mode OK (98052 bytes)"
     },
     {
       "phase": "PHASE 3",
       "name": "Next.js Route GET /download",
       "status": "PASS",
-      "durationMs": 0.7,
-      "detail": "HTTP 200 \u00b7 Dark Mode OK (65113 bytes)"
+      "durationMs": 1.2,
+      "detail": "HTTP 200 \u00b7 Dark Mode OK (74110 bytes)"
     },
     {
       "phase": "PHASE 3",
       "name": "Next.js Route GET /settings",
       "status": "PASS",
-      "durationMs": 0.7,
+      "durationMs": 1.2,
       "detail": "HTTP 200 \u00b7 Dark Mode OK (66741 bytes)"
     },
     {
       "phase": "PHASE 3",
       "name": "Live Vercel Production Verification",
       "status": "PASS",
-      "durationMs": 3172.4,
+      "durationMs": 8432.5,
       "detail": "Live https://twoolkit.vercel.app verified (HTTP 200, CORS, Dark Mode, 1200x630 OG Logo)"
     },
     {
       "phase": "PHASE 4",
       "name": "PDF to DOCX Layout Reconstruction",
       "status": "PASS",
-      "durationMs": 216.9,
+      "durationMs": 364.0,
       "detail": "Generated 37184 bytes valid DOCX"
     },
     {
       "phase": "PHASE 4",
       "name": "PDF to PPTX Slide Generation",
       "status": "PASS",
-      "durationMs": 116.2,
+      "durationMs": 199.2,
       "detail": "Generated 30551 bytes valid PPTX"
     },
     {
       "phase": "PHASE 4",
       "name": "PDF to XLSX Table Extraction",
       "status": "PASS",
-      "durationMs": 265.2,
+      "durationMs": 498.6,
       "detail": "Generated 4959 bytes valid XLSX"
     },
     {
       "phase": "PHASE 4",
       "name": "PDF to HTML, SVG & TXT",
       "status": "PASS",
-      "durationMs": 32.8,
+      "durationMs": 63.1,
       "detail": "pdf.to_html, pdf.to_svg, and pdf.to_txt verified"
     },
     {
       "phase": "PHASE 4",
       "name": "PDF AES-256 Protect & Unlock",
       "status": "PASS",
-      "durationMs": 132.4,
+      "durationMs": 199.6,
       "detail": "AES-256 encryption & decryption verified round-trip"
     },
     {
       "phase": "PHASE 4",
       "name": "PDF Truncated Repair (QPDF)",
       "status": "PASS",
-      "durationMs": 17.0,
+      "durationMs": 34.8,
       "detail": "Truncated PDF repaired with QPDF engine"
     },
     {
       "phase": "PHASE 4",
       "name": "LibreOffice DOCX & PPTX to PDF",
       "status": "PASS",
-      "durationMs": 1583.3,
+      "durationMs": 3019.6,
       "detail": "DOCX -> PDF & PPTX -> PDF via LibreOffice verified"
     },
     {
       "phase": "PHASE 4",
       "name": "Presentation to MP4 Video (OpenCV AVC1)",
       "status": "PASS",
-      "durationMs": 260.3,
+      "durationMs": 481.7,
       "detail": "Rendered 24335 bytes MP4 (AVC1 codec)"
     },
     {
       "phase": "PHASE 4",
       "name": "Data Matrix Conversions (CSV \u2194 XLSX \u2194 JSON)",
       "status": "PASS",
-      "durationMs": 64.4,
+      "durationMs": 83.4,
       "detail": "CSV -> XLSX and CSV -> JSON conversions verified"
     },
     {
       "phase": "PHASE 4",
       "name": "Image Studio Formats (PNG \u2192 JPEG \u2192 WebP)",
       "status": "PASS",
-      "durationMs": 61.9,
+      "durationMs": 79.2,
       "detail": "PNG -> JPEG & PNG -> WebP image encoding verified"
     },
     {
       "phase": "PHASE 4",
       "name": "Batch Processing Stress & 51-File Guard",
       "status": "PASS",
-      "durationMs": 675.6,
+      "durationMs": 1315.0,
       "detail": "25-file concurrent batch passed; 51-file guard enforced (HTTP 400)"
     },
     {
       "phase": "PHASE 4",
       "name": "Long Dynamic Filenames Preservation",
       "status": "PASS",
-      "durationMs": 90.8,
+      "durationMs": 184.8,
       "detail": "Long filenames preserved without clipping or truncation across conversion"
     },
     {
       "phase": "PHASE 5",
       "name": "Installed macOS Application (/Applications/TwoolKit.app)",
       "status": "PASS",
-      "durationMs": 6.6,
+      "durationMs": 12.1,
       "detail": "Installed /Applications/TwoolKit.app verified (Mach-O arm64, v1.2.0, Retina ready)"
     },
     {
@@ -282,70 +282,70 @@
       "phase": "PHASE 5",
       "name": "Fallback Offline Recovery Screen",
       "status": "PASS",
-      "durationMs": 0.2,
+      "durationMs": 0.1,
       "detail": "Fallback offline recovery screen verified in desktop/dist-fallback/index.html"
     },
     {
       "phase": "PHASE 6",
       "name": "Rust Scoped Path Security & System Blocking",
       "status": "PASS",
-      "durationMs": 2478.6,
+      "durationMs": 3057.0,
       "detail": "Rust security tests passed (blocks /System, .ssh, path traversal '..', grant store, vault)"
     },
     {
       "phase": "PHASE 6",
       "name": "Rust Recursive Scanner & Magic Bytes Engine",
       "status": "PASS",
-      "durationMs": 1547.3,
+      "durationMs": 3063.8,
       "detail": "Recursive folder scanning, SHA-256 magic-byte inspection & scoped operations verified"
     },
     {
       "phase": "PHASE 7",
       "name": "Network Health Probe & Offline Resilience",
       "status": "PASS",
-      "durationMs": 2581.1,
+      "durationMs": 3625.8,
       "detail": "Offline health probe and semver downgrade detection verified"
     },
     {
       "phase": "PHASE 7",
       "name": "Magic Byte Spoofing Rejection (HTTP 415)",
       "status": "PASS",
-      "durationMs": 3.3,
+      "durationMs": 6.2,
       "detail": "Spoofed magic bytes rejected with HTTP 415"
     },
     {
       "phase": "PHASE 8",
       "name": "Ed25519 Native Updater Configuration",
       "status": "PASS",
-      "durationMs": 0.1,
+      "durationMs": 0.2,
       "detail": "Tauri 2 Ed25519 updater declared with verified endpoint and minisign public key"
     },
     {
       "phase": "PHASE 9",
       "name": "Processing Throughput & Latency Benchmark",
       "status": "PASS",
-      "durationMs": 27.6,
-      "detail": "10-page PDF generation: 17.0 ms | Server text extraction: 8.7 ms"
+      "durationMs": 54.3,
+      "detail": "10-page PDF generation: 34.3 ms | Server text extraction: 17.2 ms"
     },
     {
       "phase": "PHASE 10",
       "name": "Security Headers & Consent Gate Enforced",
       "status": "PASS",
-      "durationMs": 2.5,
+      "durationMs": 4.1,
       "detail": "nosniff, X-Frame-Options DENY, CSP sandbox, and HTTP 428 consent gate verified"
     },
     {
       "phase": "PHASE 10",
       "name": "Path Traversal Filename Sanitization",
       "status": "PASS",
-      "durationMs": 14.7,
+      "durationMs": 28.8,
       "detail": "Path traversal filename sanitization verified"
     },
     {
       "phase": "PHASE 11",
       "name": "Global Fluid Typography & Expanded Layouts",
       "status": "PASS",
-      "durationMs": 0.6,
+      "durationMs": 0.3,
       "detail": "Global fluid clamp tokens, elevated font scale, and widened sidebar (288px) verified"
     }
   ]

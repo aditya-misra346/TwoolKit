@@ -213,6 +213,7 @@ def test_phase2_os_matrix():
     return "Supported targets: macOS (dmg, app), Windows (nsis, msi), Linux (appimage, deb, rpm)"
 
 def test_phase2_desktop_manifest():
+    ctx = ssl.create_default_context(cafile=certifi.where())
     with urllib.request.urlopen(f"{LOCAL_WEB_BASE}/api/desktop-manifest", timeout=10) as r:
         assert r.status == 200, f"HTTP {r.status}"
         data = json.loads(r.read().decode("utf-8"))
@@ -221,7 +222,7 @@ def test_phase2_desktop_manifest():
         assert len(data["installers"]["windows"]) >= 2  # x64 nsis + portable
         win_url = data["installers"]["windows"][0]["url"]
         req = urllib.request.Request(win_url, method="HEAD", headers={"User-Agent": "TwoolKit-Audit/1.2.0"})
-        with urllib.request.urlopen(req, timeout=15) as hr:
+        with urllib.request.urlopen(req, timeout=15, context=ctx) as hr:
             assert hr.status == 200, f"Windows installer URL returned HTTP {hr.status}"
             clen = int(hr.headers.get("Content-Length", "0"))
             assert clen > 5_000_000, f"Windows installer size too small: {clen}"
