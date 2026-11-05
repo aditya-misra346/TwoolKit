@@ -377,14 +377,18 @@ def test_frontend_api_routes():
 
 
 def test_live_vercel_production():
-    with urllib.request.urlopen("https://twoolkit.vercel.app/api/health", timeout=15) as resp:
+    import ssl
+    import certifi
+
+    ctx = ssl.create_default_context(cafile=certifi.where())
+    with urllib.request.urlopen("https://twoolkit.vercel.app/api/health", timeout=15, context=ctx) as resp:
         assert resp.status == 200
         assert resp.headers.get("access-control-allow-origin") == "*"
-    with urllib.request.urlopen("https://twoolkit.vercel.app/api/desktop-manifest", timeout=15) as resp:
+    with urllib.request.urlopen("https://twoolkit.vercel.app/api/desktop-manifest", timeout=15, context=ctx) as resp:
         assert resp.status == 200
         data = json.loads(resp.read().decode("utf-8"))
         assert data["appVersion"] == "1.2.0"
-    with urllib.request.urlopen("https://twoolkit.vercel.app/", timeout=15) as resp:
+    with urllib.request.urlopen("https://twoolkit.vercel.app/", timeout=15, context=ctx) as resp:
         assert resp.status == 200
         html = resp.read().decode("utf-8", errors="ignore")
         assert 'class="h-full dark"' in html
