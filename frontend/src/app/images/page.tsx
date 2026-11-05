@@ -361,19 +361,19 @@ function ImageStudioContent() {
   return (
     <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in duration-150">
       {/* Top Header & Tool Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/80 dark:border-slate-800/80">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-3 border-b border-slate-200/80 dark:border-slate-800/80">
         <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-            <ImageIcon className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+            <ImageIcon className="w-7 h-7 text-emerald-600 dark:text-emerald-400 shrink-0" />
             Advanced Image Studio & Optimizer
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-sm sm:text-base text-slate-500 dark:text-slate-300 mt-1.5">
             Certified in-browser conversion, live before/after comparison, EXIF stripping, and precision compression.
           </p>
         </div>
 
         {/* Studio Mode Tabs */}
-        <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 self-start sm:self-auto">
+        <div className="flex flex-wrap items-center gap-1 p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 self-start lg:self-auto">
           {[
             { id: "convert", label: "Format Converter", icon: RefreshCw },
             { id: "compress", label: "Compressor", icon: Minimize2 },
@@ -390,13 +390,13 @@ function ImageStudioContent() {
                   router.replace(`/images?tool=${tab.id}`, { scroll: false });
                 }}
                 className={clsx(
-                  "px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer",
+                  "px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all cursor-pointer",
                   isActive
                     ? "bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-2xs"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                 )}
               >
-                <Icon className={clsx("w-3.5 h-3.5", isActive && "text-emerald-600 dark:text-emerald-400")} />
+                <Icon className={clsx("w-4 h-4", isActive && "text-emerald-600 dark:text-emerald-400")} />
                 <span>{tab.label}</span>
               </button>
             );

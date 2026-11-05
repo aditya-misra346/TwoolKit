@@ -54,13 +54,13 @@ export default function AssistantPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in duration-150">
+    <div className="space-y-6 max-w-5xl mx-auto animate-in fade-in duration-150">
       <div>
-        <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
-          <Sparkles className="w-6 h-6 text-amber-500" />
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+          <Sparkles className="w-7 h-7 text-amber-500 shrink-0" />
           Intelligent Document Assistant & Formatting Advisor
         </h1>
-        <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-2xl leading-relaxed">
+        <p className="text-sm sm:text-base text-slate-500 dark:text-slate-300 mt-1.5 max-w-2xl leading-relaxed">
           Automated executive summaries, key bullet extraction, and conversion compatibility analysis powered by Gemini AI and local heuristics.
         </p>
       </div>

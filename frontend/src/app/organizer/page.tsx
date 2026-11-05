@@ -314,21 +314,32 @@ function OrganizerContent() {
 
                 {/* Live Preview Table */}
                 <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2.5">
                     Live Renaming Preview (First 5)
                   </span>
-                  <div className="space-y-1 max-h-36 overflow-y-auto">
-                    {files.slice(0, 5).map((f, idx) => (
-                      <div
-                        key={f.id}
-                        className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-xs flex items-center justify-between gap-2"
-                      >
-                        <span className="text-slate-500 truncate line-through max-w-[160px] text-[11px]">{f.name}</span>
-                        <span className="font-semibold text-indigo-600 dark:text-indigo-400 truncate max-w-[200px] font-mono text-[11px]">
-                          {handleComputeNewName(f.name, idx)}
-                        </span>
-                      </div>
-                    ))}
+                  <div className="space-y-1.5 max-h-44 overflow-y-auto">
+                    {files.slice(0, 5).map((f, idx) => {
+                      const newName = handleComputeNewName(f.name, idx);
+                      return (
+                        <div
+                          key={f.id}
+                          className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-xs flex items-center justify-between gap-3"
+                        >
+                          <span
+                            className="text-slate-400 truncate line-through max-w-[45%] text-xs"
+                            title={f.name}
+                          >
+                            {f.name}
+                          </span>
+                          <span
+                            className="font-semibold text-indigo-600 dark:text-indigo-400 truncate max-w-[50%] font-mono text-xs"
+                            title={newName}
+                          >
+                            {newName}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

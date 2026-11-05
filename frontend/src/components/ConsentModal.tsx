@@ -28,7 +28,7 @@ export function ConsentModal({ isOpen, onClose, onConfirm }: ConsentModalProps) 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/50 backdrop-blur-xs animate-in fade-in duration-150">
       <div
-        className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 space-y-6"
+        className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 space-y-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between">
@@ -44,35 +44,35 @@ export function ConsentModal({ isOpen, onClose, onConfirm }: ConsentModalProps) 
         </div>
 
         <div>
-          <h3 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+          <h3 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
             Server Processing & Privacy
           </h3>
-          <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 leading-relaxed">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mt-2.5 leading-relaxed">
             TWOOLKIT runs <strong>in-browser first</strong> for PDF manipulation, scanning, duplicate detection, and image editing.
           </p>
-          <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 leading-relaxed">
+          <p className="text-sm sm:text-base text-slate-600 dark:text-slate-300 mt-2.5 leading-relaxed">
             Certain advanced conversions (like <em>Word/PowerPoint ↔ PDF</em> using headless LibreOffice, <em>PDF to DOCX layout reconstruction</em>, and <em>slide video rendering</em>) require uploading the file to the local TWOOLKIT server engine on this machine.
           </p>
         </div>
 
         {/* Guarantees */}
-        <div className="space-y-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 text-xs">
-          <div className="flex items-start gap-2.5">
+        <div className="space-y-3 p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 text-xs sm:text-sm">
+          <div className="flex items-start gap-3">
             <Lock className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
             <span className="text-slate-700 dark:text-slate-300">
               <strong>Isolated Temp Directory:</strong> Uploaded files live in an isolated directory with 0700 permissions.
             </span>
           </div>
-          <div className="flex items-start gap-2.5">
+          <div className="flex items-start gap-3">
             <Trash2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
             <span className="text-slate-700 dark:text-slate-300">
               <strong>Automatic Deletion:</strong> {purgeServerAfterDownload ? "Files are deleted immediately after download to the browser" : "Files are wiped after 30 minutes"} by the retention engine.
             </span>
           </div>
-          <div className="flex items-start gap-2.5">
+          <div className="flex items-start gap-3">
             <Cpu className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
             <span className="text-slate-700 dark:text-slate-300">
-              <strong>Local Host:</strong> The server runs on <code className="px-1 py-0.5 bg-slate-200 dark:bg-slate-700 rounded-sm">127.0.0.1:8000</code> and never sends files to external third-party clouds.
+              <strong>Local Host:</strong> The server runs on <code className="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 rounded-sm">127.0.0.1:8000</code> and never sends files to external third-party clouds.
             </span>
           </div>
         </div>
