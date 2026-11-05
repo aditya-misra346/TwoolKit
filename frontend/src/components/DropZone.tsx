@@ -230,23 +230,23 @@ export function DropZone({
         <img
           src={thumbnails[file.id]}
           alt={file.name}
-          className="w-8 h-8 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+          className="w-10 h-10 rounded-xl object-cover border border-slate-700 shrink-0"
         />
       );
     }
 
     const cat = file.category;
-    let iconClass = "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300";
-    if (cat === "pdf") iconClass = "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300";
-    else if (cat === "image") iconClass = "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300";
-    else if (cat === "presentation") iconClass = "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300";
-    else if (cat === "spreadsheet") iconClass = "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300";
-    else if (cat === "archive") iconClass = "bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-300";
+    let iconClass = "bg-blue-950 text-blue-300 border border-blue-800/60";
+    if (cat === "pdf") iconClass = "bg-red-950 text-red-300 border border-red-800/60";
+    else if (cat === "image") iconClass = "bg-emerald-950 text-emerald-300 border border-emerald-800/60";
+    else if (cat === "presentation") iconClass = "bg-orange-950 text-orange-300 border border-orange-800/60";
+    else if (cat === "spreadsheet") iconClass = "bg-green-950 text-green-300 border border-green-800/60";
+    else if (cat === "archive") iconClass = "bg-pink-950 text-pink-300 border border-pink-800/60";
 
     return (
       <div
         className={clsx(
-          "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold text-[9px] uppercase tracking-wider",
+          "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-2xs uppercase tracking-wider",
           iconClass
         )}
       >
@@ -260,30 +260,30 @@ export function DropZone({
     const totalSize = selectedFiles.reduce((acc, f) => acc + f.size, 0);
 
     return (
-      <div className={clsx("w-full space-y-3", className)}>
-        <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 shadow-xs p-4 sm:p-5 space-y-4">
+      <div className={clsx("w-full space-y-3.5", className)}>
+        <div className="rounded-2xl bg-slate-900 border border-slate-800 shadow-xs p-5 sm:p-6 space-y-4">
           {/* Header Bar */}
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-3.5 border-b border-slate-800">
+            <div className="flex items-center gap-2.5">
+              <span className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider">
                 Staged Files ({selectedFiles.length})
               </span>
-              <span className="text-xs text-slate-400">· {formatBytes(totalSize)}</span>
+              <span className="text-xs sm:text-sm text-slate-300 font-mono">· {formatBytes(totalSize)}</span>
             </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => addMoreInputRef.current?.click()}
-                className="px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors flex items-center gap-1 cursor-pointer"
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className="w-4 h-4" />
                 <span>Add More</span>
               </button>
               {onClearAll && (
                 <button
                   type="button"
                   onClick={onClearAll}
-                  className="px-2.5 py-1 rounded-lg text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:bg-rose-950/50 transition-colors cursor-pointer"
                 >
                   Clear All
                 </button>
@@ -292,22 +292,33 @@ export function DropZone({
           </div>
 
           {/* Staged Files List */}
-          <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+          <div className="max-h-72 overflow-y-auto space-y-2.5 pr-1">
             {selectedFiles.map((f) => (
               <div
                 key={f.id}
-                className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60 text-xs hover:border-slate-300 dark:hover:border-slate-600 transition-colors"
+                className="flex items-center justify-between gap-3 p-3 rounded-xl bg-slate-800/55 border border-slate-700/70 text-sm hover:border-slate-600 transition-colors"
               >
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-3.5 min-w-0 flex-1">
                   {renderFileIcon(f)}
-                  <div className="min-w-0">
-                    <div className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-sm sm:max-w-md">
+                  <div className="min-w-0 flex-1">
+                    <div
+                      className="font-semibold text-slate-100 text-sm sm:text-[15.5px] truncate"
+                      title={f.path || f.name}
+                    >
                       {f.path || f.name}
                     </div>
-                    <div className="text-[10px] text-slate-400 flex items-center gap-1.5 mt-0.5">
-                      <span>{formatBytes(f.size)}</span>
+                    <div className="text-xs text-slate-300 flex flex-wrap items-center gap-2 mt-0.5">
+                      <span className="font-mono font-medium">{formatBytes(f.size)}</span>
                       <span>·</span>
-                      <span className="capitalize">{CATEGORY_LABEL[f.category as Category] ?? f.category}</span>
+                      <span className="capitalize font-medium">{CATEGORY_LABEL[f.category as Category] ?? f.category}</span>
+                      {f.extension && (
+                        <>
+                          <span>·</span>
+                          <span className="uppercase font-mono text-2xs px-1.5 py-0.5 rounded bg-slate-900 text-blue-300 border border-slate-700">
+                            .{f.extension}
+                          </span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -315,8 +326,9 @@ export function DropZone({
                   <button
                     type="button"
                     onClick={() => onRemoveFile(f.id)}
-                    className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+                    className="p-2 text-slate-300 hover:text-rose-400 rounded-xl hover:bg-slate-700/80 transition-colors cursor-pointer shrink-0"
                     title="Remove file"
+                    aria-label={`Remove ${f.name}`}
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -332,21 +344,21 @@ export function DropZone({
             onDragLeave={handleDragLeave}
             onClick={() => addMoreInputRef.current?.click()}
             className={clsx(
-              "py-3 px-4 rounded-xl border border-dashed text-center text-xs transition-all cursor-pointer flex items-center justify-center gap-2",
+              "py-3.5 px-4 rounded-xl border border-dashed text-center text-xs sm:text-sm font-medium transition-all cursor-pointer flex items-center justify-center gap-2.5",
               isDragOver
-                ? "border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-600"
-                : "border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800/40"
+                ? "border-blue-500 bg-blue-950/40 text-blue-300"
+                : "border-slate-700 text-slate-300 hover:border-blue-400 hover:bg-slate-800/50"
             )}
           >
-            <UploadCloud className="w-4 h-4" />
+            <UploadCloud className="w-4 h-4 shrink-0" />
             <span>Drop additional files here to append</span>
           </div>
 
           {/* Recommended Actions */}
           {showToolRecommendations && (
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 mb-2">
-                <Sparkles className="w-3.5 h-3.5" />
+            <div className="pt-3 border-t border-slate-800">
+              <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-blue-400 mb-2.5">
+                <Sparkles className="w-4 h-4 shrink-0" />
                 <span>Suggested workflows for these files:</span>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -354,10 +366,10 @@ export function DropZone({
                   <Link
                     key={i}
                     href={rec.href}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-900/60 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-blue-950/60 text-blue-200 border border-blue-800/70 hover:bg-blue-900/50 transition-colors"
                   >
                     <span>{rec.name}</span>
-                    <ArrowRight className="w-3 h-3 text-blue-500" />
+                    <ArrowRight className="w-3.5 h-3.5 text-blue-400" />
                   </Link>
                 ))}
               </div>
@@ -389,29 +401,29 @@ export function DropZone({
         className={clsx(
           "relative border-2 border-dashed rounded-3xl p-8 sm:p-12 text-center transition-all cursor-pointer select-none flex flex-col items-center justify-center gap-4 group",
           isDragOver
-            ? "border-blue-500 bg-blue-50/70 dark:bg-blue-950/40 scale-[1.005]"
-            : "border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-900/50 hover:border-blue-400 dark:hover:border-blue-600 hover:bg-slate-50/70 dark:hover:bg-slate-800/40 shadow-xs"
+            ? "border-blue-500 bg-blue-950/40 scale-[1.005]"
+            : "border-slate-800 bg-slate-900/60 hover:border-blue-500 hover:bg-slate-800/45 shadow-xs"
         )}
       >
-        <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-          <UploadCloud className="w-7 h-7" />
+        <div className="w-16 h-16 rounded-2xl bg-blue-950/80 text-blue-400 border border-blue-900/60 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+          <UploadCloud className="w-8 h-8" />
         </div>
 
-        <div>
-          <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+        <div className="space-y-1.5">
+          <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight">
             {title}
           </h3>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto leading-relaxed">
+          <p className="text-sm sm:text-base text-slate-300 max-w-xl mx-auto leading-relaxed">
             {description}
           </p>
         </div>
 
         {/* Primary Action Buttons */}
-        <div className="flex items-center gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+        <div className="flex flex-wrap items-center justify-center gap-3 pt-1.5" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
+            className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm shadow-xs transition-colors cursor-pointer"
           >
             Select Files
           </button>
@@ -419,22 +431,22 @@ export function DropZone({
             <button
               type="button"
               onClick={handleSelectFolder}
-              className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-900/80 hover:bg-slate-800 text-slate-200 font-semibold text-sm transition-colors flex items-center gap-2 cursor-pointer"
             >
-              <FolderUp className="w-3.5 h-3.5 text-slate-500" />
-              Upload Folder
+              <FolderUp className="w-4 h-4 text-slate-400" />
+              <span>Upload Folder</span>
             </button>
           )}
         </div>
 
         {/* Supported Format Pills */}
-        <div className="flex flex-wrap justify-center items-center gap-1.5 pt-2 text-[10px] text-slate-400 dark:text-slate-500">
-          <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 font-mono">PDF</span>
-          <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 font-mono">DOCX / DOC</span>
-          <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 font-mono">PPTX / PPT</span>
-          <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 font-mono">XLSX / CSV</span>
-          <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 font-mono">JPG / PNG / WebP</span>
-          <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 font-mono">ZIP</span>
+        <div className="flex flex-wrap justify-center items-center gap-2 pt-2 text-2xs font-semibold text-slate-300">
+          <span className="px-2.5 py-1 rounded-lg bg-slate-800/90 border border-slate-700/70 font-mono">PDF</span>
+          <span className="px-2.5 py-1 rounded-lg bg-slate-800/90 border border-slate-700/70 font-mono">DOCX / DOC</span>
+          <span className="px-2.5 py-1 rounded-lg bg-slate-800/90 border border-slate-700/70 font-mono">PPTX / PPT</span>
+          <span className="px-2.5 py-1 rounded-lg bg-slate-800/90 border border-slate-700/70 font-mono">XLSX / CSV</span>
+          <span className="px-2.5 py-1 rounded-lg bg-slate-800/90 border border-slate-700/70 font-mono">JPG / PNG / WebP</span>
+          <span className="px-2.5 py-1 rounded-lg bg-slate-800/90 border border-slate-700/70 font-mono">ZIP</span>
         </div>
 
         {/* Hidden inputs */}

@@ -142,8 +142,8 @@ export function StorageChart({
       const endAngle = Math.min(360, startAngle + angle);
       const midAngle = startAngle + (endAngle - startAngle) / 2;
 
-      const outerR = 84;
-      const innerR = 56;
+      const outerR = 86;
+      const innerR = 59;
       const p1 = polarToCartesian(100, 100, outerR, startAngle);
       const p2 = polarToCartesian(100, 100, outerR, endAngle);
       const ip1 = polarToCartesian(100, 100, innerR, endAngle);
@@ -365,7 +365,7 @@ export function StorageChart({
         /* DONUT & PIE CHART VIEW */
         <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
           {/* Interactive SVG Donut or Pie */}
-          <div className="relative w-44 h-44 shrink-0 select-none">
+          <div className="relative w-48 h-48 sm:w-52 sm:h-52 shrink-0 select-none">
             <svg viewBox="0 0 200 200" className="w-full h-full overflow-visible">
               {slices.map((slice) => {
                 const isSelected = activeBucketKey === slice.bucket;
@@ -399,33 +399,33 @@ export function StorageChart({
 
             {/* Center Metric Badge for Donut Mode, or Floating Pill for Pie Mode */}
             {viewMode === "donut" ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-3">
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-4">
                 {activeSlice ? (
                   <>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 truncate max-w-[96px]">
+                    <span className="text-2xs uppercase font-bold text-slate-300 truncate max-w-[110px]">
                       {activeSlice.label}
                     </span>
-                    <span className="text-lg font-black text-slate-900 dark:text-white tracking-tight leading-none mt-0.5 metric-number">
+                    <span className="text-lg sm:text-xl font-black text-white tracking-tight leading-none mt-1 metric-number">
                       {activeSlice.pct.toFixed(1)}%
                     </span>
-                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                    <span className="text-2xs text-slate-300 font-mono mt-1">
                       {formatBytes(activeSlice.bytes)}
                     </span>
                     {activeSlice.count > 0 && (
-                      <span className="text-[9px] text-slate-400 mt-0.5">
+                      <span className="text-2xs text-slate-400 mt-0.5">
                         {activeSlice.count} {activeSlice.count === 1 ? "file" : "files"}
                       </span>
                     )}
                   </>
                 ) : (
                   <>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 tracking-wider">
+                    <span className="text-2xs uppercase font-bold text-slate-300 tracking-wider">
                       Total Used
                     </span>
-                    <span className="text-base sm:text-lg font-black text-slate-900 dark:text-white tracking-tight leading-none mt-0.5 metric-number">
+                    <span className="text-base sm:text-lg font-black text-white tracking-tight leading-none mt-1 metric-number">
                       {formatBytes(totalBytes)}
                     </span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">
+                    <span className="text-2xs text-slate-300 mt-1">
                       {slices.length} {slices.length === 1 ? "Category" : "Categories"}
                     </span>
                   </>
@@ -433,7 +433,7 @@ export function StorageChart({
               </div>
             ) : (
               activeSlice && (
-                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-lg bg-slate-900/95 dark:bg-slate-800/95 text-white text-[10px] font-medium shadow-lg whitespace-nowrap pointer-events-none">
+                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-lg bg-slate-900/95 text-white text-xs font-medium shadow-lg whitespace-nowrap pointer-events-none border border-slate-700">
                   <span className="font-bold">{activeSlice.label}:</span>{" "}
                   <span className="font-mono">{formatBytes(activeSlice.bytes)}</span> (
                   {activeSlice.pct.toFixed(1)}%)
@@ -443,7 +443,7 @@ export function StorageChart({
           </div>
 
           {/* Interactive Legend & Category Breakdown Grid */}
-          <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs sm:text-sm">
             {slices.map((slice) => {
               const isHighlighted = activeBucketKey === slice.bucket;
               const style = BUCKET_STYLES[slice.bucket];
@@ -456,30 +456,30 @@ export function StorageChart({
                     setPinnedBucket((prev) => (prev === slice.bucket ? null : slice.bucket))
                   }
                   className={clsx(
-                    "p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2",
+                    "p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2.5",
                     isHighlighted
-                      ? "bg-slate-100/90 dark:bg-slate-800 border-blue-400 dark:border-blue-500 scale-[1.01] shadow-2xs"
-                      : "bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/60 dark:border-slate-800/60 hover:border-slate-300 dark:hover:border-slate-700"
+                      ? "bg-slate-800 border-blue-500 scale-[1.01] shadow-2xs"
+                      : "bg-slate-900/60 border-slate-800/80 hover:border-slate-700"
                   )}
                 >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className={clsx("w-2.5 h-2.5 rounded-full shrink-0", style.dot)} />
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className={clsx("w-3 h-3 rounded-full shrink-0", style.dot)} />
                     <div className="min-w-0">
-                      <div className="font-semibold text-slate-800 dark:text-slate-200 truncate">
+                      <div className="font-semibold text-slate-100 truncate">
                         {slice.label}
                       </div>
                       {slice.count > 0 && (
-                        <div className="text-[10px] text-slate-400">
+                        <div className="text-2xs text-slate-300">
                           {slice.count} {slice.count === 1 ? "file" : "files"}
                         </div>
                       )}
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="font-bold text-slate-900 dark:text-white font-mono text-[11px] metric-number">
+                    <div className="font-bold text-white font-mono text-xs metric-number">
                       {formatBytes(slice.bytes)}
                     </div>
-                    <div className="text-[10px] text-slate-400 font-mono">
+                    <div className="text-2xs text-slate-300 font-mono">
                       {slice.pct.toFixed(1)}%
                     </div>
                   </div>

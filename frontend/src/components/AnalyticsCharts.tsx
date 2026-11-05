@@ -302,7 +302,7 @@ export function FormatDistributionChart({
         </div>
       ) : (
         <div className="flex flex-col sm:flex-row items-center gap-5 py-2">
-          <div className="relative w-36 h-36 shrink-0">
+          <div className="relative w-44 h-44 shrink-0">
             <svg viewBox="0 0 180 180" className="w-full h-full">
               {items.map((item) => (
                 <path
@@ -319,11 +319,11 @@ export function FormatDistributionChart({
                 />
               ))}
             </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-              <span className="text-[10px] font-bold uppercase text-slate-400">
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-3">
+              <span className="text-2xs font-bold uppercase text-slate-300">
                 {hoveredExt ? `.${hoveredExt.toUpperCase()}` : "Formats"}
               </span>
-              <span className="text-sm font-black text-slate-900 dark:text-white">
+              <span className="text-sm sm:text-base font-black text-white">
                 {hoveredExt
                   ? `${items.find((i) => i.ext === hoveredExt)?.count || 0} files`
                   : `${items.length} types`}
@@ -331,24 +331,24 @@ export function FormatDistributionChart({
             </div>
           </div>
 
-          <div className="flex-1 grid grid-cols-2 gap-2 w-full text-xs">
+          <div className="flex-1 grid grid-cols-2 gap-2.5 w-full text-xs">
             {items.map((item) => (
               <div
                 key={item.ext}
                 onMouseEnter={() => setHoveredExt(item.ext)}
                 onMouseLeave={() => setHoveredExt(null)}
-                className="p-2 rounded-lg border border-slate-200/60 dark:border-slate-800/60 flex items-center justify-between"
+                className="p-2.5 rounded-xl border border-slate-800/80 flex items-center justify-between gap-2"
               >
-                <div className="flex items-center gap-1.5 min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
                   <span
-                    className="w-2 h-2 rounded-full shrink-0"
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
                     style={{ backgroundColor: item.color }}
                   />
-                  <span className="font-mono font-bold text-slate-800 dark:text-slate-200 truncate">
+                  <span className="font-mono font-bold text-slate-100 truncate">
                     {item.label}
                   </span>
                 </div>
-                <span className="text-[10px] font-mono text-slate-400">
+                <span className="text-2xs font-mono text-slate-300 shrink-0">
                   {item.count} ({item.pctBytes.toFixed(0)}%)
                 </span>
               </div>
@@ -544,9 +544,9 @@ export function ActivityTrendChart({ activities }: ActivityTrendChartProps) {
                 />
                 <text
                   x={pt.x}
-                  y={height - 2}
+                  y={height - 1}
                   textAnchor="middle"
-                  className="fill-slate-400 dark:fill-slate-500 text-[9px] font-medium select-none"
+                  className="fill-slate-300 text-[11px] font-semibold select-none"
                 >
                   {pt.shortDay}
                 </text>
