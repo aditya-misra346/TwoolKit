@@ -70,13 +70,27 @@ IMPORT_FILTERS: dict[str, str] = {
 
 
 def _kill_tree(proc: subprocess.Popen[bytes]) -> None:
-    try:
-        os.killpg(proc.pid, signal.SIGKILL)
-    except (ProcessLookupError, PermissionError):
+    if os.name == "nt":
         try:
-            proc.kill()
-        except ProcessLookupError:
-            pass
+            subprocess.run(
+                ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                capture_output=True,
+                timeout=5,
+                check=False,
+            )
+        except Exception:
+            try:
+                proc.kill()
+            except ProcessLookupError:
+                pass
+    else:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError):
+            try:
+                proc.kill()
+            except ProcessLookupError:
+                pass
     try:
         proc.wait(timeout=5)
     except subprocess.TimeoutExpired:
@@ -132,17 +146,22 @@ def convert(
 
     env = dict(os.environ)
     env.setdefault("HOME", str(Path.home()))
-    env["SAL_USE_VCLPLUGIN"] = env.get("SAL_USE_VCLPLUGIN", "svp")
+    if os.name != "nt":
+        env["SAL_USE_VCLPLUGIN"] = env.get("SAL_USE_VCLPLUGIN", "svp")
 
     ctx.progress(None, f"Converting with LibreOffice → {target.upper()}")
-    proc = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        stdin=subprocess.DEVNULL,
-        start_new_session=True,  # own process group so we can kill helpers too
-        env=env,
-    )
+    popen_kwargs: dict[str, object] = {
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.STDOUT,
+        "stdin": subprocess.DEVNULL,
+        "env": env,
+    }
+    if os.name == "nt":
+        popen_kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    else:
+        popen_kwargs["start_new_session"] = True  # own process group so we can kill helpers too
+
+    proc = subprocess.Popen(cmd, **popen_kwargs)  # type: ignore[arg-type]
     deadline = time.monotonic() + min(config.LIBREOFFICE_TIMEOUT_SECONDS, ctx.remaining_time())
     try:
         while True:

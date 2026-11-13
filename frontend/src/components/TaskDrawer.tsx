@@ -2,7 +2,7 @@
 
 import { useQueue, batchTasks, batchSummary } from "@/stores/tasks";
 import { createZip } from "@/lib/archiveClient";
-import { formatBytes } from "@/lib/fileTypes";
+import { formatBytes, triggerBlobDownload } from "@/lib/fileTypes";
 import {
   X,
   Play,
@@ -56,10 +56,7 @@ export function TaskDrawer() {
 
     if (outputs.length === 1) {
       const o = outputs[0];
-      const a = document.createElement("a");
-      a.href = o.url;
-      a.download = o.name;
-      a.click();
+      triggerBlobDownload(o.blob ?? o.url, o.name);
       return;
     }
 
@@ -68,11 +65,10 @@ export function TaskDrawer() {
       const zipBlob = await createZip(
         outputs.map((o) => ({ name: o.name, blob: o.blob }))
       );
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(zipBlob);
-      a.download = `${batchTitle.toLowerCase().replace(/[^a-z0-9]/g, "-")}-bundle.zip`;
-      a.click();
-      URL.revokeObjectURL(a.href);
+      triggerBlobDownload(
+        zipBlob,
+        `${batchTitle.toLowerCase().replace(/[^a-z0-9]/g, "-")}-bundle.zip`
+      );
     } finally {
       setDownloadingZip(null);
     }

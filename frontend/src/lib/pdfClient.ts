@@ -7,7 +7,7 @@
  * ocr, repair, and compression.
  */
 
-import { PDFDocument, degrees, rgb, StandardFonts } from "pdf-lib";
+import { PDFDocument, PDFDict, PDFName, PDFRawStream, degrees, rgb, StandardFonts } from "pdf-lib";
 
 export interface PageInfo {
   index: number; // 0-based
@@ -24,6 +24,12 @@ export interface RenderedThumbnail {
   width: number;
   height: number;
 }
+
+export const PDFJS_ASSET_OPTS = {
+  cMapUrl: "/pdfjs/cmaps/",
+  cMapPacked: true,
+  standardFontDataUrl: "/pdfjs/standard_fonts/",
+} as const;
 
 let _pdfjs: typeof import("pdfjs-dist") | null = null;
 
@@ -74,8 +80,7 @@ export async function renderPdfThumbnails(
     const arrayBuffer = await blob.arrayBuffer();
     const loadingTask = pdfjs.getDocument({
       data: new Uint8Array(arrayBuffer),
-      cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/cmaps/",
-      cMapPacked: true,
+      ...PDFJS_ASSET_OPTS,
     });
     const doc = await loadingTask.promise;
     const total = Math.min(doc.numPages, maxPages);
@@ -89,11 +94,13 @@ export async function renderPdfThumbnails(
       const scaledViewport = page.getViewport({ scale });
 
       const canvas = document.createElement("canvas");
-      canvas.width = Math.floor(scaledViewport.width);
-      canvas.height = Math.floor(scaledViewport.height);
+      canvas.width = Math.max(1, Math.floor(scaledViewport.width));
+      canvas.height = Math.max(1, Math.floor(scaledViewport.height));
       const ctx = canvas.getContext("2d");
 
       if (ctx) {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         await (page.render as any)({
           canvas,
           canvasContext: ctx,
@@ -432,6 +439,21 @@ export async function addHeaderFooter(
   return new Blob([outBytes as BlobPart], { type: "application/pdf" });
 }
 
+async function embedAnyImage(pdfDoc: PDFDocument, blob: Blob) {
+  const buf = await blob.arrayBuffer();
+  const u8 = new Uint8Array(buf);
+  const isPngMagic =
+    u8.length >= 8 && u8[0] === 0x89 && u8[1] === 0x50 && u8[2] === 0x4e && u8[3] === 0x47;
+  const isJpgMagic = u8.length >= 3 && u8[0] === 0xff && u8[1] === 0xd8 && u8[2] === 0xff;
+  if (isPngMagic) {
+    return await pdfDoc.embedPng(buf).catch(() => convertBlobToEmbedded(pdfDoc, blob));
+  }
+  if (isJpgMagic) {
+    return await pdfDoc.embedJpg(buf).catch(() => convertBlobToEmbedded(pdfDoc, blob));
+  }
+  return await convertBlobToEmbedded(pdfDoc, blob);
+}
+
 /** 9. Stamp Signature or Image on Page */
 export async function stampSignature(
   pdfBlob: Blob,
@@ -444,14 +466,12 @@ export async function stampSignature(
 ): Promise<Blob> {
   const bytes = await pdfBlob.arrayBuffer();
   const pdfDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
-  const imgBytes = await imageBlob.arrayBuffer();
+  const total = pdfDoc.getPageCount();
+  if (total === 0) throw new Error("PDF contains no pages.");
+  const clampedIdx = Math.max(0, Math.min(pageIndex, total - 1));
+  const embeddedImage = await embedAnyImage(pdfDoc, imageBlob);
 
-  const isPng = imageBlob.type === "image/png" || imageBlob.type === "";
-  const embeddedImage = isPng
-    ? await pdfDoc.embedPng(imgBytes)
-    : await pdfDoc.embedJpg(imgBytes);
-
-  const page = pdfDoc.getPage(pageIndex);
+  const page = pdfDoc.getPage(clampedIdx);
   page.drawImage(embeddedImage, {
     x,
     y,
@@ -463,7 +483,127 @@ export async function stampSignature(
   return new Blob([outBytes as BlobPart], { type: "application/pdf" });
 }
 
-/** 10. Crop PDF Margins */
+export interface VisualAnnotationItem {
+  id?: string;
+  kind: "text" | "highlight" | "whiteout" | "image";
+  pageIndex: number;
+  /** Visual normalized coordinates from top-left (0..1) */
+  xRatio: number;
+  yRatio: number;
+  wRatio?: number;
+  hRatio?: number;
+  text?: string;
+  fontSize?: number;
+  colorHex?: string;
+  opacity?: number;
+  imageBlob?: Blob;
+}
+
+function hexToRgbUnit(hex = "#1d4ed8") {
+  const clean = hex.replace("#", "").trim();
+  const full = clean.length === 3 ? clean.split("").map((c) => c + c).join("") : clean.padEnd(6, "0");
+  const n = parseInt(full.slice(0, 6), 16);
+  if (Number.isNaN(n)) return rgb(0.11, 0.3, 0.85);
+  return rgb(((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255);
+}
+
+/** Apply visual annotations (signatures, highlights, whiteouts, text) using normalized top-left coordinates */
+export async function applyPdfAnnotations(
+  pdfBlob: Blob,
+  annotations: VisualAnnotationItem[]
+): Promise<Blob> {
+  const bytes = await pdfBlob.arrayBuffer();
+  const pdfDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+  const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+  const total = pdfDoc.getPageCount();
+
+  for (const item of annotations) {
+    if (item.pageIndex < 0 || item.pageIndex >= total) continue;
+    const page = pdfDoc.getPage(item.pageIndex);
+    const box = page.getCropBox();
+    const rot = ((page.getRotation().angle % 360) + 360) % 360;
+    const vx = Math.max(0, Math.min(1, item.xRatio));
+    const vy = Math.max(0, Math.min(1, item.yRatio));
+    const vw = Math.max(0.01, Math.min(1, item.wRatio ?? 0.25));
+    const vh = Math.max(0.01, Math.min(1, item.hRatio ?? 0.08));
+
+    const visW = rot === 90 || rot === 270 ? box.height : box.width;
+    const visH = rot === 90 || rot === 270 ? box.width : box.height;
+
+    const mapPoint = (nx: number, nyFromTop: number) => {
+      if (rot === 90) {
+        return { x: box.x + nyFromTop * box.width, y: box.y + (1 - nx) * box.height };
+      }
+      if (rot === 180) {
+        return { x: box.x + (1 - nx) * box.width, y: box.y + nyFromTop * box.height };
+      }
+      if (rot === 270) {
+        return { x: box.x + (1 - nyFromTop) * box.width, y: box.y + nx * box.height };
+      }
+      return { x: box.x + nx * box.width, y: box.y + (1 - nyFromTop) * box.height };
+    };
+
+    if (item.kind === "text" && item.text?.trim()) {
+      const size = Math.max(8, Math.min(72, item.fontSize ?? 16));
+      const pt = mapPoint(vx, vy + size / Math.max(100, visH));
+      page.drawText(item.text.trim(), {
+        x: pt.x,
+        y: pt.y,
+        size,
+        font,
+        color: hexToRgbUnit(item.colorHex || "#0f172a"),
+        opacity: item.opacity ?? 1,
+        rotate: degrees(rot),
+      });
+    } else if (item.kind === "highlight" || item.kind === "whiteout") {
+      const drawW = vw * visW;
+      const drawH = vh * visH;
+      const pt = mapPoint(vx, vy + vh);
+      const isWhite = item.kind === "whiteout";
+      const rw = rot === 90 || rot === 270 ? drawH : drawW;
+      const rh = rot === 90 || rot === 270 ? drawW : drawH;
+      page.drawRectangle({
+        x:
+          rot === 90
+            ? box.x + vy * box.width
+            : rot === 180
+            ? box.x + (1 - vx - vw) * box.width
+            : rot === 270
+            ? box.x + (1 - vy - vh) * box.width
+            : pt.x,
+        y:
+          rot === 90
+            ? box.y + (1 - vx - vw) * box.height
+            : rot === 180
+            ? box.y + vy * box.height
+            : rot === 270
+            ? box.y + vx * box.height
+            : pt.y,
+        width: rw,
+        height: rh,
+        color: isWhite ? rgb(1, 1, 1) : hexToRgbUnit(item.colorHex || "#facc15"),
+        opacity: isWhite ? 1 : (item.opacity ?? 0.35),
+      });
+    } else if (item.kind === "image" && item.imageBlob) {
+      const embedded = await embedAnyImage(pdfDoc, item.imageBlob);
+      const drawW = vw * visW;
+      const drawH = vh * visH;
+      const pt = mapPoint(vx, vy + vh);
+      page.drawImage(embedded, {
+        x: pt.x,
+        y: pt.y,
+        width: drawW,
+        height: drawH,
+        ...(rot !== 0 ? { rotate: degrees(rot) } : {}),
+      });
+    }
+  }
+
+  const outBytes = await pdfDoc.save({ useObjectStreams: true });
+  return new Blob([outBytes as BlobPart], { type: "application/pdf" });
+}
+
+/** 10. Crop PDF Margins (rotation and existing CropBox origin aware) */
 export async function cropPdfMargins(
   pdfBlob: Blob,
   cropMarginPts: { top: number; right: number; bottom: number; left: number }
@@ -474,11 +614,42 @@ export async function cropPdfMargins(
 
   for (let i = 0; i < total; i++) {
     const page = pdfDoc.getPage(i);
-    const { width, height } = page.getSize();
-    const newX = cropMarginPts.left;
-    const newY = cropMarginPts.bottom;
-    const newW = Math.max(72, width - cropMarginPts.left - cropMarginPts.right);
-    const newH = Math.max(72, height - cropMarginPts.top - cropMarginPts.bottom);
+    const box = page.getCropBox();
+    const rot = ((page.getRotation().angle % 360) + 360) % 360;
+
+    let uLeft = cropMarginPts.left;
+    let uRight = cropMarginPts.right;
+    let uTop = cropMarginPts.top;
+    let uBottom = cropMarginPts.bottom;
+
+    if (rot === 90) {
+      uLeft = cropMarginPts.top;
+      uBottom = cropMarginPts.left;
+      uRight = cropMarginPts.bottom;
+      uTop = cropMarginPts.right;
+    } else if (rot === 180) {
+      uLeft = cropMarginPts.right;
+      uBottom = cropMarginPts.top;
+      uRight = cropMarginPts.left;
+      uTop = cropMarginPts.bottom;
+    } else if (rot === 270) {
+      uLeft = cropMarginPts.bottom;
+      uRight = cropMarginPts.top;
+      uTop = cropMarginPts.left;
+      uBottom = cropMarginPts.right;
+    }
+
+    const maxH = Math.max(0, box.width - 72);
+    const maxV = Math.max(0, box.height - 72);
+    const safeLeft = Math.min(Math.max(0, uLeft), maxH);
+    const safeRight = Math.min(Math.max(0, uRight), maxH - safeLeft);
+    const safeBottom = Math.min(Math.max(0, uBottom), maxV);
+    const safeTop = Math.min(Math.max(0, uTop), maxV - safeBottom);
+
+    const newX = box.x + safeLeft;
+    const newY = box.y + safeBottom;
+    const newW = Math.max(72, box.width - safeLeft - safeRight);
+    const newH = Math.max(72, box.height - safeBottom - safeTop);
 
     page.setCropBox(newX, newY, newW, newH);
   }
@@ -499,17 +670,7 @@ export async function imagesToPdf(
   for (let i = 0; i < total; i++) {
     onProgress?.(i / total, `Adding image ${i + 1} of ${total}`);
     const blob = imageBlobs[i];
-    const imgBytes = await blob.arrayBuffer();
-
-    let embedded;
-    if (blob.type === "image/png") {
-      embedded = await pdfDoc.embedPng(imgBytes);
-    } else {
-      embedded = await pdfDoc.embedJpg(imgBytes).catch(async () => {
-        return await convertBlobToEmbedded(pdfDoc, blob);
-      });
-    }
-
+    const embedded = await embedAnyImage(pdfDoc, blob);
     const { width: imgW, height: imgH } = embedded;
 
     if (pageSize === "a4") {
@@ -550,29 +711,13 @@ export async function imagesToPdf(
 }
 
 async function convertBlobToEmbedded(doc: PDFDocument, blob: Blob) {
-  return new Promise<any>((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(blob);
-    img.onload = async () => {
-      URL.revokeObjectURL(url);
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return reject(new Error("Canvas context unavailable"));
-      ctx.drawImage(img, 0, 0);
-      canvas.toBlob(async (b) => {
-        if (!b) return reject(new Error("Failed to encode canvas"));
-        const pngBuf = await b.arrayBuffer();
-        resolve(await doc.embedPng(pngBuf));
-      }, "image/png");
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("Failed to decode image"));
-    };
-    img.src = url;
+  const { decodeToCanvas } = await import("@/lib/imageClient");
+  const canvas = await decodeToCanvas(blob);
+  const pngBlob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((b: Blob | null) => (b ? resolve(b) : reject(new Error("Failed to encode canvas"))), "image/png");
   });
+  const pngBuf = await pngBlob.arrayBuffer();
+  return await doc.embedPng(pngBuf);
 }
 
 /** 12. PDF to Images (JPEG, PNG, WebP) per page */
@@ -587,8 +732,7 @@ export async function renderPdfToImages(
   const arrayBuffer = await pdfBlob.arrayBuffer();
   const loadingTask = pdfjs.getDocument({
     data: new Uint8Array(arrayBuffer),
-    cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/cmaps/",
-    cMapPacked: true,
+    ...PDFJS_ASSET_OPTS,
   });
   const doc = await loadingTask.promise;
   const total = doc.numPages;
@@ -603,17 +747,241 @@ export async function renderPdfToImages(
     const page = await doc.getPage(pageNum);
     const viewport = page.getViewport({ scale });
     const canvas = document.createElement("canvas");
-    canvas.width = Math.floor(viewport.width);
-    canvas.height = Math.floor(viewport.height);
+    canvas.width = Math.max(1, Math.floor(viewport.width));
+    canvas.height = Math.max(1, Math.floor(viewport.height));
     const ctx = canvas.getContext("2d");
 
     if (ctx) {
+      // Paint opaque white paper before rendering so JPEG never turns transparent pages black
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
       await (page.render as any)({ canvas, canvasContext: ctx, viewport }).promise;
       const blob = await new Promise<Blob>((res, rej) => {
         canvas.toBlob((b) => (b ? res(b) : rej(new Error("Canvas export failed"))), mime, 0.92);
       });
-      results.push({ name: `page-${pageNum}.${ext}`, blob });
+      // Safari/older WebViews may silently encode WebP requests as PNG; match file extension to actual MIME
+      const actualExt =
+        format === "webp" && blob.type === "image/png" ? "png" : ext;
+      results.push({ name: `page-${pageNum}.${actualExt}`, blob });
     }
+  }
+
+  return results;
+}
+
+/** 12b. PDF to Vector/Hybrid SVG per page (Client-Side Fallback) */
+export async function renderPdfToSvgClient(
+  pdfBlob: Blob,
+  rangeStr?: string,
+  onProgress?: (p: number, stage: string) => void
+): Promise<{ name: string; blob: Blob }[]> {
+  const pdfjs = await getPdfJs();
+  const arrayBuffer = await pdfBlob.arrayBuffer();
+  const loadingTask = pdfjs.getDocument({
+    data: new Uint8Array(arrayBuffer),
+    ...PDFJS_ASSET_OPTS,
+  });
+  const doc = await loadingTask.promise;
+  const total = doc.numPages;
+  const pageIndices = rangeStr ? parsePageRange(rangeStr, total) : Array.from({ length: total }, (_, i) => i);
+  const results: { name: string; blob: Blob }[] = [];
+
+  const escXml = (s: string) =>
+    s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+
+  for (let idx = 0; idx < pageIndices.length; idx++) {
+    const pageNum = pageIndices[idx] + 1;
+    onProgress?.(idx / pageIndices.length, `Generating SVG for page ${pageNum}`);
+    const page = await doc.getPage(pageNum);
+    const baseViewport = page.getViewport({ scale: 1 });
+    const renderViewport = page.getViewport({ scale: 2 });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.floor(renderViewport.width));
+    canvas.height = Math.max(1, Math.floor(renderViewport.height));
+    const ctx = canvas.getContext("2d");
+    let dataUrl = "";
+    if (ctx) {
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await (page.render as any)({ canvas, canvasContext: ctx, viewport: renderViewport }).promise;
+      dataUrl = canvas.toDataURL("image/png");
+    }
+
+    const textContent = await page.getTextContent();
+    const textEls: string[] = [];
+    for (const rawItem of textContent.items as any[]) {
+      const str = rawItem?.str;
+      if (!str || !str.trim()) continue;
+      const tx = (pdfjs as any).Util?.transform
+        ? (pdfjs as any).Util.transform(baseViewport.transform, rawItem.transform)
+        : [1, 0, 0, -1, rawItem.transform?.[4] ?? 0, baseViewport.height - (rawItem.transform?.[5] ?? 0)];
+      const fontSize = Math.max(4, Math.hypot(tx[0], tx[1]) || 10);
+      const x = Number((tx[4] ?? 0).toFixed(2));
+      const y = Number((tx[5] ?? fontSize).toFixed(2));
+      textEls.push(
+        `<text x="${x}" y="${y}" font-size="${fontSize.toFixed(1)}" font-family="sans-serif" fill="#0f172a" fill-opacity="0">${escXml(str)}</text>`
+      );
+    }
+
+    const w = Math.max(1, Math.round(baseViewport.width));
+    const h = Math.max(1, Math.round(baseViewport.height));
+    const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+  <rect width="${w}" height="${h}" fill="#ffffff"/>
+  ${dataUrl ? `<image x="0" y="0" width="${w}" height="${h}" href="${dataUrl}" xlink:href="${dataUrl}"/>` : ""}
+  <g id="selectable-text">${textEls.join("\n    ")}</g>
+</svg>`;
+    results.push({
+      name: `page-${pageNum}.svg`,
+      blob: new Blob([svg], { type: "image/svg+xml;charset=utf-8" }),
+    });
+  }
+
+  return results;
+}
+
+/** 12c. Extract Embedded Images from PDF (Client-Side Fallback) */
+export async function extractPdfImagesClient(
+  pdfBlob: Blob,
+  onProgress?: (p: number, stage: string) => void
+): Promise<{ name: string; blob: Blob }[]> {
+  const bytes = await pdfBlob.arrayBuffer();
+  const results: { name: string; blob: Blob }[] = [];
+  const extractedKeys = new Set<string>();
+
+  // First pass: extract clean native JPEG (DCTDecode) streams directly from XObjects
+  try {
+    const pdfDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+    const pages = pdfDoc.getPages();
+    for (let pIdx = 0; pIdx < pages.length; pIdx++) {
+      onProgress?.((pIdx / Math.max(1, pages.length)) * 0.45, `Scanning page ${pIdx + 1} for native JPEGs`);
+      const resDict = pages[pIdx].node.Resources();
+      const xObjects = resDict?.lookupMaybe(PDFName.of("XObject"), PDFDict);
+      if (!xObjects) continue;
+      let imgSeq = 0;
+      for (const [key, refOrObj] of xObjects.entries()) {
+        const obj = pdfDoc.context.lookup(refOrObj);
+        if (!(obj instanceof PDFRawStream)) continue;
+        const subtype = obj.dict.lookup(PDFName.of("Subtype"));
+        if (subtype !== PDFName.of("Image")) continue;
+        const filter = obj.dict.lookup(PDFName.of("Filter"));
+        const hasSmask = !!obj.dict.get(PDFName.of("SMask"));
+        const colorSpace = obj.dict.lookup(PDFName.of("ColorSpace"));
+        const isCmyk = colorSpace === PDFName.of("DeviceCMYK");
+        if (filter === PDFName.of("DCTDecode") && !hasSmask && !isCmyk) {
+          imgSeq++;
+          const uniqueTag = `${String((refOrObj as any)?.objectNumber ?? key.asString())}`;
+          if (extractedKeys.has(uniqueTag)) continue;
+          extractedKeys.add(uniqueTag);
+          results.push({
+            name: `page-${pIdx + 1}-img-${imgSeq}.jpg`,
+            blob: new Blob([new Uint8Array(obj.contents)], { type: "image/jpeg" }),
+          });
+        }
+      }
+    }
+  } catch {
+    // Continue to PDF.js decoded image pass
+  }
+
+  // Second pass: decode FlateDecode / Indexed / CMYK / SMask / inline bitmaps via PDF.js
+  const pdfjs = await getPdfJs();
+  const doc = await pdfjs.getDocument({
+    data: new Uint8Array(bytes),
+    ...PDFJS_ASSET_OPTS,
+  }).promise;
+
+  const seenObjNames = new Set<string>();
+  const paintImageOp = (pdfjs as any).OPS?.paintImageXObject ?? 85;
+  const paintInlineOp = (pdfjs as any).OPS?.paintInlineImageXObject ?? 86;
+
+  for (let p = 1; p <= doc.numPages; p++) {
+    onProgress?.(0.45 + (p / Math.max(1, doc.numPages)) * 0.5, `Decoding embedded images on page ${p}`);
+    const page = await doc.getPage(p);
+    // Warm up resources by rendering or evaluating operator list
+    const opList = await page.getOperatorList();
+    let imgIdx = 0;
+
+    for (let i = 0; i < opList.fnArray.length; i++) {
+      const fn = opList.fnArray[i];
+      if (fn !== paintImageOp && fn !== paintInlineOp) continue;
+
+      let imgObj: any = null;
+      if (fn === paintInlineOp) {
+        imgObj = opList.argsArray[i]?.[0];
+      } else {
+        const objName = String(opList.argsArray[i]?.[0] || "");
+        if (!objName || seenObjNames.has(`${p}:${objName}`)) continue;
+        seenObjNames.add(`${p}:${objName}`);
+        imgObj = await new Promise<any>((resolve) => {
+          try {
+            if (page.objs.has(objName)) {
+              resolve(page.objs.get(objName));
+            } else {
+              page.objs.get(objName, (data: any) => resolve(data));
+            }
+          } catch {
+            resolve(null);
+          }
+        });
+      }
+
+      if (!imgObj || !imgObj.width || !imgObj.height) continue;
+      if (imgObj.width < 12 && imgObj.height < 12) continue;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = imgObj.width;
+      canvas.height = imgObj.height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) continue;
+
+      if (imgObj.bitmap) {
+        ctx.drawImage(imgObj.bitmap, 0, 0);
+      } else if (imgObj.data) {
+        const w = imgObj.width;
+        const h = imgObj.height;
+        const src = imgObj.data as Uint8ClampedArray | Uint8Array;
+        const rgba = new Uint8ClampedArray(w * h * 4);
+        if (src.length === w * h * 4) {
+          rgba.set(src);
+        } else if (src.length === w * h * 3) {
+          for (let px = 0, si = 0, di = 0; px < w * h; px++, si += 3, di += 4) {
+            rgba[di] = src[si];
+            rgba[di + 1] = src[si + 1];
+            rgba[di + 2] = src[si + 2];
+            rgba[di + 3] = 255;
+          }
+        } else if (src.length === w * h) {
+          for (let px = 0, di = 0; px < w * h; px++, di += 4) {
+            const g = src[px];
+            rgba[di] = g;
+            rgba[di + 1] = g;
+            rgba[di + 2] = g;
+            rgba[di + 3] = 255;
+          }
+        } else {
+          continue;
+        }
+        ctx.putImageData(new ImageData(rgba, w, h), 0, 0);
+      } else {
+        continue;
+      }
+
+      const blob = await new Promise<Blob | null>((res) => canvas.toBlob((b) => res(b), "image/png"));
+      if (blob) {
+        imgIdx++;
+        results.push({ name: `page-${p}-extracted-${imgIdx}.png`, blob });
+      }
+    }
+  }
+
+  if (results.length === 0) {
+    throw new Error("No embedded raster images were found in this PDF.");
   }
 
   return results;
@@ -629,8 +997,7 @@ export async function extractPdfText(
   const arrayBuffer = await pdfBlob.arrayBuffer();
   const loadingTask = pdfjs.getDocument({
     data: new Uint8Array(arrayBuffer),
-    cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/cmaps/",
-    cMapPacked: true,
+    ...PDFJS_ASSET_OPTS,
   });
   const doc = await loadingTask.promise;
   const total = doc.numPages;
@@ -783,25 +1150,43 @@ export async function extractPdfToXlsx(
   workbook.created = new Date();
 
   const { text } = await extractPdfText(pdfBlob, undefined, (p, s) => onProgress?.(p * 0.7, s));
-  const pages = text.split(/--- PAGE \d+ ---/g).map((s) => s.trim()).filter(Boolean);
+  let pages = text.split(/--- PAGE \d+ ---/g).map((s) => s.trim()).filter(Boolean);
 
-  pages.forEach((p, pageIdx) => {
-    const sheet = workbook.addWorksheet(`Page ${pageIdx + 1}`);
-    const lines = p.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (pages.length === 0) {
+    onProgress?.(0.55, "No text layer found · Trying OCR table scan");
+    try {
+      const ocrRes = await ocrPdf(pdfBlob, "eng", (p, s) => onProgress?.(0.55 + p * 0.3, s));
+      pages = ocrRes.text.split(/--- PAGE \d+ ---/g).map((s) => s.trim()).filter(Boolean);
+    } catch {
+      // Fall back to single informational worksheet so Excel never produces 0-sheet corrupt ZIP
+    }
+  }
 
-    lines.forEach((line) => {
-      // Split on multiple spaces, tabs, or commas
-      const cells = line.split(/\s{2,}|\t/).map((c) => c.trim());
-      if (cells.length > 0) {
-        sheet.addRow(cells);
+  if (pages.length === 0) {
+    const sheet = workbook.addWorksheet("Page 1");
+    sheet.addRow(["No extractable text found in PDF"]);
+  } else {
+    pages.forEach((p, pageIdx) => {
+      const sheet = workbook.addWorksheet(`Page ${pageIdx + 1}`);
+      const lines = p.split("\n").map((l) => l.trim()).filter(Boolean);
+
+      lines.forEach((line) => {
+        let cells = line.split(/\s{2,}|\t|\|/).map((c) => c.trim()).filter(Boolean);
+        if (cells.length <= 1 && line.includes(",")) {
+          cells = line.split(",").map((c) => c.trim());
+        }
+        if (cells.length > 0) {
+          sheet.addRow(cells);
+        }
+      });
+
+      if (sheet.rowCount > 0) {
+        sheet.getRow(1).font = { bold: true };
+      } else {
+        sheet.addRow(["Empty page"]);
       }
     });
-
-    // Style first row if exists
-    if (sheet.rowCount > 0) {
-      sheet.getRow(1).font = { bold: true };
-    }
-  });
+  }
 
   onProgress?.(0.9, "Generating Excel workbook");
   const buffer = await workbook.xlsx.writeBuffer();
@@ -821,8 +1206,12 @@ export async function extractPdfToPptx(
   const pres = new PptxGenJS();
   pres.layout = "LAYOUT_16x9";
 
-  if (mode === "image") {
-    // Render each page as high-res slide image
+  const { text } = await extractPdfText(pdfBlob, undefined, onProgress);
+  const pages = text.split(/--- PAGE \d+ ---/g).map((s) => s.trim()).filter(Boolean);
+  const useImageSlides = mode === "image" || pages.length === 0;
+
+  if (useImageSlides) {
+    // Render each page as high-res slide image (also automatic fallback when scanned PDF has 0 text)
     const images = await renderPdfToImages(pdfBlob, "png", 2.0, undefined, onProgress);
     for (let i = 0; i < images.length; i++) {
       const slide = pres.addSlide();
@@ -835,9 +1224,6 @@ export async function extractPdfToPptx(
     }
   } else {
     // Hybrid: extract text per page and structure into slides
-    const { text } = await extractPdfText(pdfBlob, undefined, onProgress);
-    const pages = text.split(/--- PAGE \d+ ---/g).map((s) => s.trim()).filter(Boolean);
-
     for (let i = 0; i < pages.length; i++) {
       const slide = pres.addSlide();
       slide.background = { color: "F8FAFC" };
@@ -878,19 +1264,51 @@ export async function compressPdfClient(
   level: "low" | "balanced" | "max" = "balanced",
   onProgress?: (p: number, stage: string) => void
 ): Promise<Blob> {
-  onProgress?.(0.2, "Analyzing PDF structure and streams");
+  onProgress?.(0.15, "Analyzing PDF structure and streams");
   const bytes = await pdfBlob.arrayBuffer();
   const pdfDoc = await PDFDocument.load(bytes, { ignoreEncryption: true });
 
-  onProgress?.(0.6, "Optimizing cross-reference tables and compressing object streams");
-  // Save with optimized object streams and stripping unnecessary dictionary data
-  const compressedBytes = await pdfDoc.save({
+  if (level === "balanced" || level === "max") {
+    pdfDoc.setProducer("TwoolKit Optimizer");
+    pdfDoc.setCreator("TwoolKit");
+  }
+
+  onProgress?.(0.45, "Optimizing cross-reference tables and object streams");
+  const structuralBytes = await pdfDoc.save({
     useObjectStreams: true,
     addDefaultPage: false,
   });
 
+  let bestBytes: Uint8Array = structuralBytes;
+
+  // For Maximum compression, also evaluate JPEG page downsampling and pick the smaller result
+  if (level === "max" && typeof document !== "undefined") {
+    try {
+      onProgress?.(0.65, "Evaluating image recompression for maximum shrinkage");
+      const rasterDoc = await PDFDocument.create();
+      const rendered = await renderPdfToImages(pdfBlob, "jpeg", 1.35, undefined);
+      for (const pageImg of rendered) {
+        const imgBuf = await pageImg.blob.arrayBuffer();
+        const jpg = await rasterDoc.embedJpg(imgBuf);
+        const p = rasterDoc.addPage([jpg.width / 1.35, jpg.height / 1.35]);
+        p.drawImage(jpg, { x: 0, y: 0, width: p.getWidth(), height: p.getHeight() });
+      }
+      const rasterBytes = await rasterDoc.save({ useObjectStreams: true, addDefaultPage: false });
+      if (rasterBytes.byteLength > 0 && rasterBytes.byteLength < bestBytes.byteLength) {
+        bestBytes = rasterBytes;
+      }
+    } catch {
+      // Keep structural compression output
+    }
+  }
+
   onProgress?.(1.0, "Optimization complete");
-  return new Blob([compressedBytes as BlobPart], { type: "application/pdf" });
+  if (bestBytes.byteLength >= bytes.byteLength) {
+    return pdfBlob.type === "application/pdf"
+      ? pdfBlob
+      : new Blob([bytes], { type: "application/pdf" });
+  }
+  return new Blob([bestBytes as BlobPart], { type: "application/pdf" });
 }
 
 /** 19. Repair PDF In-Browser */
@@ -919,13 +1337,15 @@ export async function ocrPdf(
   const worker = await createWorker(lang);
   const ocrResults: string[] = [];
 
-  for (let i = 0; i < images.length; i++) {
-    onProgress?.(0.4 + 0.55 * (i / images.length), `Running OCR on page ${i + 1} of ${images.length}`);
-    const ret = await worker.recognize(images[i].blob);
-    ocrResults.push(`=== PAGE ${i + 1} OCR TEXT ===\n` + ret.data.text.trim());
+  try {
+    for (let i = 0; i < images.length; i++) {
+      onProgress?.(0.4 + 0.55 * (i / images.length), `Running OCR on page ${i + 1} of ${images.length}`);
+      const ret = await worker.recognize(images[i].blob);
+      ocrResults.push(`=== PAGE ${i + 1} OCR TEXT ===\n` + ret.data.text.trim());
+    }
+  } finally {
+    await worker.terminate();
   }
-
-  await worker.terminate();
   onProgress?.(1.0, "OCR recognition finished");
 
   const fullText = ocrResults.join("\n\n");
@@ -1001,9 +1421,6 @@ export async function unlockPdfClient(
   onProgress?: (p: number, stage: string) => void
 ): Promise<Blob> {
   const pw = password ? password.trim() : "";
-  if (!pw) {
-    throw new Error("Enter the decryption password to unlock this PDF.");
-  }
 
   onProgress?.(0.2, "Reading encrypted document streams");
   const arrayBuffer = await pdfBlob.arrayBuffer();
@@ -1017,6 +1434,9 @@ export async function unlockPdfClient(
     decryptedBytes = await decryptPDF(inputBytes, pw);
   } catch (err: any) {
     const msg = err?.message || String(err);
+    if (!pw) {
+      throw new Error("Enter the decryption password to unlock this PDF.");
+    }
     if (/incorrect password|does not match/i.test(msg)) {
       throw new Error("Incorrect password. The document could not be unlocked.");
     }

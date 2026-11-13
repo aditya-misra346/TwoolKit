@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { DropZone, type StagedFile } from "@/components/DropZone";
 import { useQueue } from "@/stores/tasks";
-import { runServerJob } from "@/lib/api";
+import { runServerJob, hasBackendServer } from "@/lib/api";
+import { canConvertClientSide, convertDocumentClient } from "@/lib/documentClient";
 import { useSettings } from "@/stores/settings";
 import { ConsentModal } from "@/components/ConsentModal";
 import { extOf } from "@/lib/fileTypes";
@@ -25,29 +26,40 @@ import Link from "next/link";
 
 const FORMAT_MATRIX: Record<string, string[]> = {
   // Word & text
-  docx: ["pdf", "odt", "rtf", "txt", "html", "doc"],
-  doc: ["pdf", "docx", "odt", "txt"],
-  odt: ["pdf", "docx", "rtf", "txt"],
-  rtf: ["pdf", "docx", "odt", "txt"],
-  txt: ["pdf", "docx", "html", "md"],
+  docx: ["pdf", "odt", "rtf", "txt", "md", "html", "doc"],
+  doc: ["pdf", "docx", "odt", "txt", "html"],
+  odt: ["pdf", "docx", "rtf", "txt", "md", "html"],
+  rtf: ["pdf", "docx", "odt", "txt", "md", "html"],
+  txt: ["pdf", "docx", "html", "md", "rtf"],
   md: ["html", "pdf", "docx", "txt"],
   html: ["md", "txt", "pdf", "docx"],
 
   // Spreadsheets
-  xlsx: ["csv", "tsv", "json", "pdf", "ods"],
-  xls: ["xlsx", "csv", "pdf"],
-  ods: ["xlsx", "csv", "pdf"],
-  csv: ["xlsx", "tsv", "json", "html", "md", "xml"],
-  tsv: ["csv", "xlsx", "json", "html"],
+  xlsx: ["csv", "tsv", "json", "xml", "md", "html", "pdf", "ods"],
+  xls: ["xlsx", "csv", "pdf", "ods", "html"],
+  ods: ["xlsx", "csv", "pdf", "html"],
+  csv: ["xlsx", "tsv", "json", "xml", "html", "md", "pdf", "ods"],
+  tsv: ["csv", "xlsx", "json", "xml", "html", "md", "pdf"],
 
   // Presentations
-  pptx: ["pdf", "odp", "ppt"],
+  pptx: ["pdf", "odp", "ppt", "txt", "html"],
   ppt: ["pdf", "pptx", "odp"],
-  odp: ["pdf", "pptx"],
+  odp: ["pdf", "pptx", "txt", "html"],
 
   // Data
+  json: ["csv", "tsv", "xlsx", "xml", "md", "html"],
+  xml: ["json", "csv", "tsv", "xlsx"],
+};
+
+const DATA_NATIVE_MATRIX: Record<string, string[]> = {
+  csv: ["tsv", "json", "xlsx", "html", "md", "xml"],
+  tsv: ["csv", "json", "xlsx", "html", "md", "xml"],
   json: ["csv", "tsv", "xlsx", "xml"],
   xml: ["json"],
+  xlsx: ["csv", "tsv", "json"],
+  md: ["html", "pdf", "docx", "txt"],
+  html: ["md", "txt", "pdf", "docx"],
+  txt: ["pdf", "docx", "html", "md"],
 };
 
 function DocumentConverterContent() {
@@ -63,10 +75,21 @@ function DocumentConverterContent() {
   const primaryExt = files.length > 0 ? extOf(files[0].name) : "docx";
   const availableTargets = FORMAT_MATRIX[primaryExt] || ["pdf"];
 
+  // Ensure targetFormat is always a valid target when source file type changes
+  useEffect(() => {
+    if (files.length > 0 && !availableTargets.includes(targetFormat)) {
+      setTargetFormat(availableTargets[0]);
+    }
+  }, [files.length, primaryExt, availableTargets, targetFormat]);
+
   const handleRunConversion = () => {
     if (files.length === 0) return;
 
-    if (!useSettings.getState().cloudConsent) {
+    const allHaveClientFallback = files.every((f) =>
+      canConvertClientSide(extOf(f.name), targetFormat)
+    );
+
+    if (!allHaveClientFallback && !useSettings.getState().cloudConsent) {
       setShowConsentModal(true);
       return;
     }
@@ -81,13 +104,50 @@ function DocumentConverterContent() {
       files.map((f) => ({
         label: f.name,
         inputSize: f.size,
-        engine: "server",
+        engine: canConvertClientSide(extOf(f.name), targetFormat) ? "local" : "server",
         run: async (ctx) => {
           const ext = extOf(f.name);
-          const isDataNative = ["csv", "tsv", "json", "xml", "md"].includes(ext) &&
-            ["tsv", "json", "xml", "csv", "xlsx", "md", "html"].includes(targetFormat);
-
+          const isDataNative = Boolean(DATA_NATIVE_MATRIX[ext]?.includes(targetFormat));
           const op = isDataNative ? "data.convert" : "office.convert";
+
+          if (useSettings.getState().cloudConsent && (await hasBackendServer(op))) {
+            try {
+              const res = await runServerJob(
+                op,
+                [f.file],
+                [f.name],
+                { target: targetFormat },
+                ctx.signal,
+                (p, s) => ctx.progress(p, s)
+              );
+              return { outputs: res.files, warnings: res.warnings };
+            } catch (err: any) {
+              const isServerIssue =
+                err?.status === 404 ||
+                err?.status === 428 ||
+                err?.status === 502 ||
+                err?.status === 503 ||
+                err?.status === 0 ||
+                /not reach|disappeared|HTTP 404|404|503|502|428|NetworkError|active backend service/i.test(
+                  err?.message || ""
+                );
+              if (!isServerIssue || !canConvertClientSide(ext, targetFormat)) {
+                throw err;
+              }
+            }
+          }
+
+          if (canConvertClientSide(ext, targetFormat)) {
+            ctx.progress(0.25, "Converting with in-browser document engine");
+            const out = await convertDocumentClient(f.file, targetFormat, (p, s) =>
+              ctx.progress(p, s)
+            );
+            return {
+              outputs: [{ name: out.name, blob: out.blob }],
+              warnings: ["Converted locally using in-browser document engine"],
+            };
+          }
+
           const res = await runServerJob(op, [f.file], [f.name], { target: targetFormat }, ctx.signal, (p, s) =>
             ctx.progress(p, s)
           );

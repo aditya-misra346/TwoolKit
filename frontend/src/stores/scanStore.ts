@@ -81,8 +81,9 @@ export const useScanStore = create<ScanStoreState>()((set, get) => ({
     if (!scan) return;
     const updated = scan.files.map((f) => {
       if (f.id === fileId) {
-        const newPath = f.path.includes("/")
-          ? f.path.slice(0, f.path.lastIndexOf("/") + 1) + newName
+        const lastSep = Math.max(f.path.lastIndexOf("/"), f.path.lastIndexOf("\\"));
+        const newPath = lastSep >= 0
+          ? f.path.slice(0, lastSep + 1) + newName
           : newName;
         return { ...f, name: newName, path: newPath };
       }

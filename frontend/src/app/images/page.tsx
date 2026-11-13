@@ -7,12 +7,13 @@ import { useQueue } from "@/stores/tasks";
 import { runServerJob } from "@/lib/api";
 import {
   convertAndOptimizeImage,
+  decodeToCanvas,
   inspectMetadata,
   calculateReduction,
   type ImageMeta,
   type SupportedTargetFormat,
 } from "@/lib/imageClient";
-import { formatBytes, extOf } from "@/lib/fileTypes";
+import { formatBytes, extOf, baseName, triggerBlobDownload } from "@/lib/fileTypes";
 import {
   Image as ImageIcon,
   Minimize2,
@@ -77,6 +78,9 @@ function ImageStudioContent() {
   // Edit transformations
   const [width, setWidth] = useState<number | undefined>(undefined);
   const [height, setHeight] = useState<number | undefined>(undefined);
+  const [resizeEnabled, setResizeEnabled] = useState(false);
+  const [resizeMode, setResizeMode] = useState<"none" | "percent" | "exact">("none");
+  const [naturalDims, setNaturalDims] = useState<{ width: number; height: number } | null>(null);
   const [lockAspect, setLockAspect] = useState(true);
   const [scalePercent, setScalePercent] = useState<number>(100);
   const [rotateAngle, setRotateAngle] = useState(0);
@@ -85,7 +89,6 @@ function ImageStudioContent() {
   const [grayscale, setGrayscale] = useState(false);
   const [brightness, setBrightness] = useState(0);
   const [contrast, setContrast] = useState(0);
-  const [cropPreset, setCropPreset] = useState<"original" | "1:1" | "16:9" | "4:3" | "9:16">("original");
 
   // Privacy & Metadata
   const [stripMeta, setStripMeta] = useState(true);
@@ -96,9 +99,16 @@ function ImageStudioContent() {
   const [processedPreviewUrl, setProcessedPreviewUrl] = useState<string | null>(null);
   const [processedSize, setProcessedSize] = useState<number | null>(null);
   const [processedBlob, setProcessedBlob] = useState<Blob | null>(null);
+  const [processedFormat, setProcessedFormat] = useState<string>("webp");
+  const [readyParamsKey, setReadyParamsKey] = useState<string>("");
   const [compareMode, setCompareMode] = useState<"split" | "side" | "single">("split");
   const [sliderPos, setSliderPos] = useState<number>(50);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
+
+  const currentParamsKey = selectedFile
+    ? `${selectedFile.id}|${targetFormat}|${quality}|${resizeEnabled ? `${width ?? ""}x${height ?? ""}` : "orig"}|${rotateAngle}|${flipH}|${flipV}|${grayscale}|${brightness}|${contrast}|${backgroundColor}|${stripMeta}`
+    : "";
+  const isPreviewReady = Boolean(processedBlob && readyParamsKey === currentParamsKey && !isGeneratingPreview);
 
   const { enqueue, setDrawer } = useQueue();
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -117,28 +127,71 @@ function ImageStudioContent() {
     }
   }, [files, selectedFile]);
 
-  // Inspect metadata and generate original preview
+  // Inspect metadata, measure true pixel dimensions, and generate original preview
   useEffect(() => {
-    if (selectedFile) {
-      const url = URL.createObjectURL(selectedFile.file);
-      setOriginalPreviewUrl(url);
-
-      void inspectMetadata(selectedFile.file).then((meta) => {
-        setMetaInfo(meta);
-        if (meta?.width) setWidth(meta.width);
-        if (meta?.height) setHeight(meta.height);
+    if (!selectedFile) {
+      setOriginalPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
       });
+      setMetaInfo(null);
+      setNaturalDims(null);
+      if (!resizeEnabled) {
+        setWidth(undefined);
+        setHeight(undefined);
+      }
+      return;
+    }
 
-      return () => {
-        URL.revokeObjectURL(url);
-      };
+    let cancelled = false;
+    let createdUrl: string | null = null;
+    const ext = extOf(selectedFile.name);
+    const needsDecodePreview = ext === "heic" || ext === "heif" || ext === "tif" || ext === "tiff";
+
+    if (!needsDecodePreview) {
+      createdUrl = URL.createObjectURL(selectedFile.file);
+      setOriginalPreviewUrl(createdUrl);
     } else {
       setOriginalPreviewUrl(null);
-      setMetaInfo(null);
-      setWidth(undefined);
-      setHeight(undefined);
     }
-  }, [selectedFile]);
+
+    void decodeToCanvas(selectedFile.file)
+      .then((canvas) => {
+        if (cancelled) return;
+        setNaturalDims({ width: canvas.width, height: canvas.height });
+        if (!resizeEnabled) {
+          setWidth(canvas.width);
+          setHeight(canvas.height);
+        }
+        if (needsDecodePreview) {
+          canvas.toBlob((pngBlob) => {
+            if (!pngBlob || cancelled) return;
+            createdUrl = URL.createObjectURL(pngBlob);
+            setOriginalPreviewUrl(createdUrl);
+          }, "image/png");
+        }
+      })
+      .catch(() => {
+        // Fallback if decode fails
+      });
+
+    void inspectMetadata(selectedFile.file).then((meta) => {
+      if (cancelled) return;
+      setMetaInfo(meta);
+      if (meta?.width && meta?.height) {
+        setNaturalDims((prev) => prev || { width: meta.width, height: meta.height });
+        if (!resizeEnabled) {
+          setWidth((prev) => prev ?? meta.width);
+          setHeight((prev) => prev ?? meta.height);
+        }
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+  }, [selectedFile, resizeEnabled]);
 
   // Generate live processed preview on setting changes (debounced)
   useEffect(() => {
@@ -159,8 +212,8 @@ function ImageStudioContent() {
         const res = await convertAndOptimizeImage(selectedFile.file, {
           targetFormat,
           quality,
-          width,
-          height,
+          width: resizeEnabled ? width : undefined,
+          height: resizeEnabled ? height : undefined,
           rotate: rotateAngle,
           flipHorizontal: flipH,
           flipVertical: flipV,
@@ -171,14 +224,24 @@ function ImageStudioContent() {
           stripMetadata: stripMeta,
         });
 
+        let previewBlob = res.blob;
+        if (res.format === "tiff" || res.format === "tif") {
+          const decoded = await decodeToCanvas(res.blob);
+          previewBlob = await new Promise<Blob>((resolve) => {
+            decoded.toBlob((b) => resolve(b || res.blob), "image/png");
+          });
+        }
+
         if (isMounted) {
-          const url = URL.createObjectURL(res.blob);
+          const url = URL.createObjectURL(previewBlob);
           setProcessedPreviewUrl((prev) => {
             if (prev) URL.revokeObjectURL(prev);
             return url;
           });
           setProcessedSize(res.blob.size);
           setProcessedBlob(res.blob);
+          setProcessedFormat(res.format);
+          setReadyParamsKey(currentParamsKey);
         }
       } catch (e) {
         console.warn("Live preview generation:", e);
@@ -193,10 +256,12 @@ function ImageStudioContent() {
     };
   }, [
     selectedFile,
+    currentParamsKey,
     targetFormat,
     quality,
     width,
     height,
+    resizeEnabled,
     rotateAngle,
     flipH,
     flipV,
@@ -209,27 +274,54 @@ function ImageStudioContent() {
 
   // Aspect ratio locking helper
   const handleWidthChange = (newW: number | undefined) => {
+    setResizeEnabled(true);
+    setResizeMode("exact");
     setWidth(newW);
-    if (lockAspect && metaInfo?.width && metaInfo?.height && newW) {
-      const ratio = metaInfo.height / metaInfo.width;
-      setHeight(Math.round(newW * ratio));
+    const refW = naturalDims?.width || metaInfo?.width;
+    const refH = naturalDims?.height || metaInfo?.height;
+    if (lockAspect && refW && refH && newW) {
+      setHeight(Math.round((newW * refH) / refW));
     }
   };
 
   const handleHeightChange = (newH: number | undefined) => {
+    setResizeEnabled(true);
+    setResizeMode("exact");
     setHeight(newH);
-    if (lockAspect && metaInfo?.width && metaInfo?.height && newH) {
-      const ratio = metaInfo.width / metaInfo.height;
-      setWidth(Math.round(newH * ratio));
+    const refW = naturalDims?.width || metaInfo?.width;
+    const refH = naturalDims?.height || metaInfo?.height;
+    if (lockAspect && refW && refH && newH) {
+      setWidth(Math.round((newH * refW) / refH));
     }
   };
 
   const handleScalePercent = (pct: number) => {
     setScalePercent(pct);
-    if (metaInfo?.width && metaInfo?.height) {
-      setWidth(Math.round((metaInfo.width * pct) / 100));
-      setHeight(Math.round((metaInfo.height * pct) / 100));
+    const refW = naturalDims?.width || metaInfo?.width;
+    const refH = naturalDims?.height || metaInfo?.height;
+    if (pct === 100) {
+      setResizeEnabled(false);
+      setResizeMode("none");
+      setWidth(refW);
+      setHeight(refH);
+      return;
     }
+    setResizeEnabled(true);
+    setResizeMode("percent");
+    if (refW && refH) {
+      setWidth(Math.round((refW * pct) / 100));
+      setHeight(Math.round((refH * pct) / 100));
+    }
+  };
+
+  const isSupportedImageFile = (file: File): boolean => {
+    const n = file.name.toLowerCase();
+    if (n === ".ds_store" || n === "thumbs.db" || n === "desktop.ini" || file.name.startsWith("._")) {
+      return false;
+    }
+    if (file.type.startsWith("image/")) return true;
+    const e = extOf(file.name);
+    return ["jpg", "jpeg", "png", "webp", "avif", "gif", "bmp", "ico", "tiff", "tif", "svg", "heic", "heif"].includes(e);
   };
 
   // Folder selection helper
@@ -243,7 +335,9 @@ function ImageStudioContent() {
           for await (const entry of handle.values()) {
             if (entry.kind === "file") {
               const file = await entry.getFile();
-              folderFiles.push(file);
+              if (isSupportedImageFile(file)) {
+                folderFiles.push(file);
+              }
             } else if (entry.kind === "directory") {
               await readDir(entry, `${curPath}/${entry.name}`);
             }
@@ -259,7 +353,9 @@ function ImageStudioContent() {
           category: "image",
           extension: extOf(file.name),
         }));
-        setFiles((prev) => [...prev, ...staged]);
+        if (staged.length > 0) {
+          setFiles((prev) => [...prev, ...staged]);
+        }
         return;
       } catch {
         // Fallback to file input
@@ -288,13 +384,26 @@ function ImageStudioContent() {
           const ext = extOf(f.name);
           const isHeic = ext === "heic" || ext === "heif";
 
+          let batchWidth: number | undefined;
+          let batchHeight: number | undefined;
+          if (resizeEnabled) {
+            if (resizeMode === "percent" && scalePercent !== 100) {
+              const c = await decodeToCanvas(f.file);
+              batchWidth = Math.max(1, Math.round((c.width * scalePercent) / 100));
+              batchHeight = Math.max(1, Math.round((c.height * scalePercent) / 100));
+            } else if (resizeMode === "exact") {
+              batchWidth = width;
+              batchHeight = height;
+            }
+          }
+
           try {
             ctx.progress(0.5, "Applying transformations and encoding");
             const res = await convertAndOptimizeImage(f.file, {
               targetFormat,
               quality,
-              width,
-              height,
+              width: batchWidth,
+              height: batchHeight,
               rotate: rotateAngle,
               flipHorizontal: flipH,
               flipVertical: flipV,
@@ -306,8 +415,9 @@ function ImageStudioContent() {
             });
 
             ctx.progress(1.0, "Conversion complete");
-            const base = f.name.slice(0, f.name.lastIndexOf(".")) || f.name;
-            const extOut = targetFormat === "jpeg" ? "jpg" : targetFormat;
+            const base = baseName(f.name);
+            const resolvedFmt = res.format || targetFormat;
+            const extOut = resolvedFmt === "jpeg" ? "jpg" : resolvedFmt;
             return {
               outputs: [
                 {
@@ -320,7 +430,7 @@ function ImageStudioContent() {
             };
           } catch (err: any) {
             // Failover to backend if server is accessible
-            if (isHeic) {
+            if (isHeic || targetFormat === "avif") {
               ctx.progress(0.6, "Trying high-compatibility server image engine");
               try {
                 const serverRes = await runServerJob(
@@ -330,8 +440,8 @@ function ImageStudioContent() {
                   {
                     target: targetFormat,
                     quality,
-                    width,
-                    height,
+                    width: batchWidth,
+                    height: batchHeight,
                     keepMetadata: !stripMeta,
                     background: backgroundColor,
                   },
@@ -339,7 +449,7 @@ function ImageStudioContent() {
                   (p, s) => ctx.progress(p, s)
                 );
                 return { outputs: serverRes.files, warnings: serverRes.warnings };
-              } catch (serverErr) {
+              } catch {
                 throw err;
               }
             }
@@ -437,15 +547,19 @@ function ImageStudioContent() {
               ref={folderInputRef}
               onChange={(e) => {
                 if (e.target.files) {
-                  const folderFiles: StagedFile[] = Array.from(e.target.files).map((file) => ({
-                    id: `${file.name}_${file.size}_${file.lastModified}_${Math.random().toString(36).slice(2, 6)}`,
-                    name: file.name,
-                    size: file.size,
-                    file,
-                    category: "image",
-                    extension: extOf(file.name),
-                  }));
-                  setFiles((prev) => [...prev, ...folderFiles]);
+                  const folderFiles: StagedFile[] = Array.from(e.target.files)
+                    .filter(isSupportedImageFile)
+                    .map((file) => ({
+                      id: `${file.name}_${file.size}_${file.lastModified}_${Math.random().toString(36).slice(2, 6)}`,
+                      name: file.name,
+                      size: file.size,
+                      file,
+                      category: "image",
+                      extension: extOf(file.name),
+                    }));
+                  if (folderFiles.length > 0) {
+                    setFiles((prev) => [...prev, ...folderFiles]);
+                  }
                 }
               }}
               // @ts-expect-error - webkitdirectory and directory are browser-specific folder upload attributes
@@ -622,11 +736,11 @@ function ImageStudioContent() {
               {/* Statistics & Reduction Bar */}
               <div className="p-3 bg-slate-50 dark:bg-slate-900/60 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
                 <div className="flex items-center gap-4">
-                  {metaInfo?.width && metaInfo?.height && (
+                  {(naturalDims || (metaInfo?.width && metaInfo?.height)) && (
                     <div className="text-[11px] font-mono text-slate-500">
                       <span className="text-slate-400">Dimensions: </span>
                       <strong className="text-slate-800 dark:text-slate-200">
-                        {metaInfo.width}×{metaInfo.height} px
+                        {naturalDims?.width || metaInfo?.width}×{naturalDims?.height || metaInfo?.height} px
                       </strong>
                     </div>
                   )}
@@ -658,6 +772,27 @@ function ImageStudioContent() {
                 )}
               </div>
             </div>
+
+            {files.length > 1 && (
+              <div className="flex flex-wrap items-center gap-1.5 px-1">
+                <span className="text-[11px] text-slate-400 mr-1">Inspect:</span>
+                {files.map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    onClick={() => setSelectedFile(f)}
+                    className={clsx(
+                      "px-2.5 py-1 rounded-lg border text-[11px] font-medium truncate max-w-[160px] cursor-pointer transition-colors",
+                      selectedFile?.id === f.id
+                        ? "border-emerald-500 bg-emerald-950/60 text-emerald-200"
+                        : "border-slate-800 bg-slate-900 text-slate-400 hover:text-slate-200"
+                    )}
+                  >
+                    {f.name}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Staged files deck with folder add support */}
             <DropZone
@@ -830,18 +965,29 @@ function ImageStudioContent() {
                     <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                       Dimensions:
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => setLockAspect(!lockAspect)}
-                      className={clsx(
-                        "text-[10px] font-semibold px-2 py-0.5 rounded cursor-pointer",
-                        lockAspect
-                          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+                    <div className="flex items-center gap-1.5">
+                      {resizeEnabled && (
+                        <button
+                          type="button"
+                          onClick={() => handleScalePercent(100)}
+                          className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300 hover:text-white cursor-pointer"
+                        >
+                          Reset Size
+                        </button>
                       )}
-                    >
-                      {lockAspect ? "Aspect Locked" : "Freeform"}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => setLockAspect(!lockAspect)}
+                        className={clsx(
+                          "text-[10px] font-semibold px-2 py-0.5 rounded cursor-pointer",
+                          lockAspect
+                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                            : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+                        )}
+                      >
+                        {lockAspect ? "Aspect Locked" : "Freeform"}
+                      </button>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
@@ -1052,18 +1198,17 @@ function ImageStudioContent() {
               </button>
               {processedBlob && (
                 <button
+                  type="button"
+                  disabled={!isPreviewReady}
                   onClick={() => {
-                    const a = document.createElement("a");
-                    a.href = URL.createObjectURL(processedBlob);
-                    const base = selectedFile?.name.slice(0, selectedFile.name.lastIndexOf(".")) || "image";
-                    const extOut = targetFormat === "jpeg" ? "jpg" : targetFormat;
-                    a.download = `${base}-optimized.${extOut}`;
-                    a.click();
+                    const base = selectedFile ? baseName(selectedFile.name) : "image";
+                    const extOut = processedFormat === "jpeg" ? "jpg" : processedFormat;
+                    triggerBlobDownload(processedBlob, `${base}-optimized.${extOut}`);
                   }}
-                  className="w-full py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="w-full py-2 px-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Download Processed Image</span>
+                  <span>{isPreviewReady ? "Download Processed Image" : "Updating Preview..."}</span>
                 </button>
               )}
             </div>

@@ -94,14 +94,14 @@ reg(
 );
 
 export function extOf(name: string): string {
-  const base = name.split("/").pop() ?? name;
+  const base = name.split(/[\\/]/).pop() ?? name;
   const i = base.lastIndexOf(".");
   if (i <= 0 || i === base.length - 1) return "";
   return base.slice(i + 1).toLowerCase();
 }
 
 export function baseName(name: string): string {
-  const b = name.split("/").pop() ?? name;
+  const b = name.split(/[\\/]/).pop() ?? name;
   const i = b.lastIndexOf(".");
   return i > 0 ? b.slice(0, i) : b;
 }
@@ -455,4 +455,23 @@ export const MIME_BY_EXT: Record<string, string> = {
 
 export function mimeOf(name: string): string {
   return MIME_BY_EXT[extOf(name)] ?? "application/octet-stream";
+}
+
+/**
+ * Trigger a browser file download safely across macOS Safari/WKWebView,
+ * Windows Edge/WebView2, and Linux Chromium/Firefox.
+ */
+export function triggerBlobDownload(blobOrUrl: Blob | string, filename: string): void {
+  const isBlob = typeof blobOrUrl !== "string";
+  const url = isBlob ? URL.createObjectURL(blobOrUrl) : blobOrUrl;
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename || "download";
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    a.remove();
+    if (isBlob) URL.revokeObjectURL(url);
+  }, 15000);
 }

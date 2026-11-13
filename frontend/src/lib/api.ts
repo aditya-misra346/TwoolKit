@@ -53,6 +53,18 @@ export async function fetchCapabilities(force = false): Promise<Capabilities | n
   }
 }
 
+/** True only when an active Python processing backend responds to /api/capabilities. */
+export async function hasBackendServer(op?: string): Promise<boolean> {
+  const caps = await fetchCapabilities();
+  if (!caps) return false;
+  const isPythonBackend = Boolean(
+    caps.engines?.pymupdf || caps.engines?.pikepdf || caps.engines?.libreoffice
+  );
+  if (!isPythonBackend) return false;
+  if (op && caps.ops?.[op]) return Boolean(caps.ops[op].available);
+  return true;
+}
+
 function uploadJob(
   op: string,
   files: File[] | Blob[],

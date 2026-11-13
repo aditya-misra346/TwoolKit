@@ -1,12 +1,14 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { use, useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { TOOLS } from "@/lib/tools";
 import { DropZone, type StagedFile } from "@/components/DropZone";
 import { useQueue } from "@/stores/tasks";
-import { runServerJob } from "@/lib/api";
+import { runServerJob, hasBackendServer } from "@/lib/api";
 import { PageOrganizer } from "@/components/pdf/PageOrganizer";
+import { PdfViewerStudio } from "@/components/pdf/PdfViewerStudio";
+import { PdfAnnotateStudio } from "@/components/pdf/PdfAnnotateStudio";
 import { ConsentModal } from "@/components/ConsentModal";
 import { useSettings } from "@/stores/settings";
 import {
@@ -20,6 +22,8 @@ import {
   cropPdfMargins,
   imagesToPdf,
   renderPdfToImages,
+  renderPdfToSvgClient,
+  extractPdfImagesClient,
   extractPdfText,
   extractPdfToHtml,
   extractPdfToDocx,
@@ -36,7 +40,7 @@ import {
   type RenderedThumbnail,
   type PageAction,
 } from "@/lib/pdfClient";
-import { formatBytes } from "@/lib/fileTypes";
+import { formatBytes, baseName } from "@/lib/fileTypes";
 import {
   ArrowLeft,
   Sparkles,
@@ -77,9 +81,10 @@ interface Props {
   params: Promise<{ tool: string }>;
 }
 
-export default function DedicatedPdfToolPage({ params }: Props) {
-  const { tool: rawToolSlug } = use(params);
+function DedicatedPdfToolPageInner({ rawToolSlug }: { rawToolSlug: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const modeParam = searchParams.get("mode");
   const { enqueue, setDrawer } = useQueue();
   const { cloudConsent } = useSettings();
 
@@ -92,7 +97,8 @@ export default function DedicatedPdfToolPage({ params }: Props) {
       t.id === toolSlug ||
       t.id === `pdf-${toolSlug}` ||
       t.href === `/pdf/${toolSlug}` ||
-      t.href === `/pdf/pdf-${toolSlug}`
+      t.href === `/pdf/pdf-${toolSlug}` ||
+      (modeParam === "sign" && t.id === "pdf-sign")
   );
 
   const [files, setFiles] = useState<StagedFile[]>([]);
@@ -110,8 +116,11 @@ export default function DedicatedPdfToolPage({ params }: Props) {
   const [watermarkText, setWatermarkText] = useState("CONFIDENTIAL");
   const [watermarkOpacity, setWatermarkOpacity] = useState(0.2);
   const [watermarkColor, setWatermarkColor] = useState<"red" | "gray" | "blue">("red");
-  const [pageNumberPos, setPageNumberPos] = useState<"bottom-center" | "bottom-right" | "top-right">("bottom-center");
+  const [pageNumberPos, setPageNumberPos] = useState<
+    "bottom-center" | "bottom-right" | "bottom-left" | "top-center" | "top-right" | "top-left"
+  >("bottom-center");
   const [pageNumberFmt, setPageNumberFmt] = useState<"number" | "page-of-total" | "page-n">("page-of-total");
+  const [imagePageSize, setImagePageSize] = useState<"fit" | "a4" | "letter">("fit");
   const [headerText, setHeaderText] = useState("");
   const [footerText, setFooterText] = useState("");
   const [splitRange, setSplitRange] = useState("");
@@ -131,8 +140,12 @@ export default function DedicatedPdfToolPage({ params }: Props) {
   const [previewThumbs, setPreviewThumbs] = useState<RenderedThumbnail[]>([]);
 
   const isImagesToPdf = toolSlug === "images-to-pdf";
-  const acceptedExt = isImagesToPdf ? ".jpg,.jpeg,.png,.webp,.bmp" : ".pdf";
+  const acceptedExt = isImagesToPdf
+    ? ".jpg,.jpeg,.png,.webp,.bmp,.gif,.tif,.tiff,.svg,.heic,.heif,.ico"
+    : ".pdf";
   const isOrganize = toolSlug === "organize" || toolSlug === "reorder";
+  const isViewer = toolSlug === "view" || toolSlug === "viewer";
+  const isAnnotate = toolSlug === "edit" || toolSlug === "sign";
 
   // Load PDF document page count and preview thumbnails when a PDF is staged
   useEffect(() => {
@@ -304,8 +317,21 @@ export default function DedicatedPdfToolPage({ params }: Props) {
           engine: "local",
           run: async (ctx) => {
             ctx.progress(0.3, "Removing specified pages");
-            // Parse comma-separated list of numbers
-            const parts = deletePagesSpec.split(",").map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
+            const parts: number[] = [];
+            for (const token of deletePagesSpec.split(",")) {
+              const t = token.trim();
+              const m = t.match(/^(\d+)\s*-\s*(\d+)$/);
+              if (m) {
+                const start = parseInt(m[1], 10);
+                const end = parseInt(m[2], 10);
+                if (!isNaN(start) && !isNaN(end) && end >= start) {
+                  for (let n = start; n <= Math.min(end, start + 5000); n++) parts.push(n);
+                }
+              } else {
+                const n = parseInt(t, 10);
+                if (!isNaN(n)) parts.push(n);
+              }
+            }
             const deletedBlob = await deletePdfPages(f.file, parts);
             return {
               outputs: [
@@ -442,7 +468,7 @@ export default function DedicatedPdfToolPage({ params }: Props) {
             run: async (ctx) => {
               const pdfBlob = await imagesToPdf(
                 files.map((f) => f.file),
-                "fit",
+                imagePageSize,
                 (p, s) => ctx.progress(p, s)
               );
               return { outputs: [{ name: "compiled-images.pdf", blob: pdfBlob }] };
@@ -554,7 +580,11 @@ export default function DedicatedPdfToolPage({ params }: Props) {
       setValidationError(null);
 
       // If user selected server mode but hasn't consented yet, show consent dialog
-      if (protectEngine === "server" && !useSettings.getState().cloudConsent) {
+      if (
+        protectEngine === "server" &&
+        !useSettings.getState().cloudConsent &&
+        (await hasBackendServer("pdf.protect"))
+      ) {
         setShowConsentModal(true);
         return;
       }
@@ -566,7 +596,9 @@ export default function DedicatedPdfToolPage({ params }: Props) {
           inputSize: f.size,
           engine: protectEngine,
           run: async (ctx) => {
-            if (protectEngine === "server") {
+            const useServerForProtect =
+              protectEngine === "server" && (await hasBackendServer("pdf.protect"));
+            if (useServerForProtect) {
               try {
                 ctx.progress(0.2, "Sending document to server for AES-256 encryption");
                 const res = await runServerJob(
@@ -655,10 +687,6 @@ export default function DedicatedPdfToolPage({ params }: Props) {
 
     // 17. Unlock PDF (In-Browser Decryption with Server Failover)
     if (toolSlug === "unlock") {
-      if (!password) {
-        setValidationError("Please enter the decryption password.");
-        return;
-      }
       setValidationError(null);
 
       enqueue(
@@ -681,7 +709,7 @@ export default function DedicatedPdfToolPage({ params }: Props) {
                 ],
               };
             } catch (err: any) {
-              if (cloudConsent) {
+              if (cloudConsent && (await hasBackendServer("pdf.unlock"))) {
                 try {
                   ctx.progress(0.5, "Trying server-side decryption engine");
                   const res = await runServerJob(
@@ -715,11 +743,16 @@ export default function DedicatedPdfToolPage({ params }: Props) {
 
     if (toolSlug === "to-word") {
       serverOp = "pdf.to_docx";
-      options = { password: password || undefined };
+      options = {
+        mode: docxMode,
+        detect_tables: docxDetectTables,
+        ocr_fallback: docxOcrFallback,
+        password: password || undefined,
+      };
       fallbackFn = async (file, ctx) => {
         ctx.progress(0.4, "Using high-compatibility client Word engine");
         const docxBlob = await extractPdfToDocx(file, (p, s) => ctx.progress(p, s));
-        return [{ name: file.name.replace(/\.pdf$/i, ".docx"), blob: docxBlob }];
+        return [{ name: `${baseName(file.name)}.docx`, blob: docxBlob }];
       };
     } else if (toolSlug === "to-pptx") {
       serverOp = "pdf.to_pptx";
@@ -727,7 +760,7 @@ export default function DedicatedPdfToolPage({ params }: Props) {
       fallbackFn = async (file, ctx) => {
         ctx.progress(0.4, "Using high-compatibility client slide engine");
         const pptxBlob = await extractPdfToPptx(file, pptxMode, (p, s) => ctx.progress(p, s));
-        return [{ name: file.name.replace(/\.pdf$/i, ".pptx"), blob: pptxBlob }];
+        return [{ name: `${baseName(file.name)}.pptx`, blob: pptxBlob }];
       };
     } else if (toolSlug === "to-excel") {
       serverOp = "pdf.to_xlsx";
@@ -735,14 +768,14 @@ export default function DedicatedPdfToolPage({ params }: Props) {
       fallbackFn = async (file, ctx) => {
         ctx.progress(0.4, "Using high-compatibility client spreadsheet engine");
         const xlsxBlob = await extractPdfToXlsx(file, (p, s) => ctx.progress(p, s));
-        return [{ name: file.name.replace(/\.pdf$/i, ".xlsx"), blob: xlsxBlob }];
+        return [{ name: `${baseName(file.name)}.xlsx`, blob: xlsxBlob }];
       };
     } else if (toolSlug === "to-html") {
       serverOp = "pdf.to_html";
       fallbackFn = async (file, ctx) => {
         ctx.progress(0.4, "Generating standalone web document");
         const htmlBlob = await extractPdfToHtml(file, (p, s) => ctx.progress(p, s));
-        return [{ name: file.name.replace(/\.pdf$/i, ".html"), blob: htmlBlob }];
+        return [{ name: `${baseName(file.name)}.html`, blob: htmlBlob }];
       };
     } else if (toolSlug === "compress") {
       serverOp = "pdf.compress";
@@ -750,21 +783,29 @@ export default function DedicatedPdfToolPage({ params }: Props) {
       fallbackFn = async (file, ctx) => {
         ctx.progress(0.4, "Running client object-stream compression");
         const compBlob = await compressPdfClient(file, compressLevel, (p, s) => ctx.progress(p, s));
-        return [{ name: file.name.replace(/\.pdf$/i, "-compressed.pdf"), blob: compBlob }];
+        return [{ name: `${baseName(file.name)}-compressed.pdf`, blob: compBlob }];
       };
     } else if (toolSlug === "repair") {
       serverOp = "pdf.repair";
       fallbackFn = async (file, ctx) => {
         ctx.progress(0.4, "Rebuilding cross-reference tables");
         const repBlob = await repairPdfClient(file);
-        return [{ name: file.name.replace(/\.pdf$/i, "-repaired.pdf"), blob: repBlob }];
+        return [{ name: `${baseName(file.name)}-repaired.pdf`, blob: repBlob }];
       };
     } else if (toolSlug === "extract-images") {
       serverOp = "pdf.extract_images";
       options = { password: password || undefined };
+      fallbackFn = async (file, ctx) => {
+        ctx.progress(0.3, "Scanning embedded image XObjects");
+        return await extractPdfImagesClient(file, (p, s) => ctx.progress(p, s));
+      };
     } else if (toolSlug === "to-svg") {
       serverOp = "pdf.to_svg";
       options = { pages: splitRange || undefined, password: password || undefined };
+      fallbackFn = async (file, ctx) => {
+        ctx.progress(0.3, "Rendering SVG vector layers");
+        return await renderPdfToSvgClient(file, splitRange, (p, s) => ctx.progress(p, s));
+      };
     }
 
     if (!fallbackFn && !useSettings.getState().cloudConsent) {
@@ -784,33 +825,37 @@ export default function DedicatedPdfToolPage({ params }: Props) {
         inputSize: f.size,
         engine: fallbackFn ? "local" : "server",
         run: async (ctx) => {
-          try {
-            const res = await runServerJob(serverOp, [f.file], [f.name], options, ctx.signal, (p, s) =>
-              ctx.progress(p, s)
-            );
-            return { outputs: res.files, warnings: res.warnings };
-          } catch (err: any) {
-            // Check for server unreachability, 404, 503, 428, or network failure
-            const isServerIssue =
-              err?.status === 404 ||
-              err?.status === 428 ||
-              err?.status === 502 ||
-              err?.status === 503 ||
-              err?.status === 0 ||
-              /not reach|disappeared|HTTP 404|404|503|502|428|NetworkError|active backend service|Server processing is turned off/i.test(
-                err?.message || ""
+          const canUseServer =
+            useSettings.getState().cloudConsent && (await hasBackendServer(serverOp));
+          if (canUseServer || !fallbackFn) {
+            try {
+              const res = await runServerJob(serverOp, [f.file], [f.name], options, ctx.signal, (p, s) =>
+                ctx.progress(p, s)
               );
+              return { outputs: res.files, warnings: res.warnings };
+            } catch (err: any) {
+              const isServerIssue =
+                err?.status === 404 ||
+                err?.status === 428 ||
+                err?.status === 502 ||
+                err?.status === 503 ||
+                err?.status === 0 ||
+                /not reach|disappeared|HTTP 404|404|503|502|428|NetworkError|active backend service|Server processing is turned off/i.test(
+                  err?.message || ""
+                );
 
-            if (isServerIssue && fallbackFn) {
-              ctx.progress(0.2, "Switching to client processing pipeline");
-              const clientOutputs = await fallbackFn(f.file, ctx);
-              return {
-                outputs: clientOutputs,
-                warnings: ["Processed locally with client high-speed engine"],
-              };
+              if (!isServerIssue || !fallbackFn) {
+                throw err;
+              }
             }
-            throw err;
           }
+
+          ctx.progress(0.2, "Running high-speed in-browser processing pipeline");
+          const clientOutputs = await fallbackFn(f.file, ctx);
+          return {
+            outputs: clientOutputs,
+            warnings: ["Processed locally with client high-speed engine"],
+          };
         },
       }))
     );
@@ -821,6 +866,8 @@ export default function DedicatedPdfToolPage({ params }: Props) {
     tool?.engine === "local" ||
     isImagesToPdf ||
     isOrganize ||
+    isViewer ||
+    isAnnotate ||
     (toolSlug === "protect" && protectEngine === "local") ||
     toolSlug === "unlock" ||
     [
@@ -835,6 +882,8 @@ export default function DedicatedPdfToolPage({ params }: Props) {
       "header-footer",
       "edit",
       "sign",
+      "view",
+      "viewer",
       "to-image",
       "to-text",
       "ocr",
@@ -887,10 +936,32 @@ export default function DedicatedPdfToolPage({ params }: Props) {
           }
           description={
             isImagesToPdf
-              ? "Supports PNG, JPEG, WebP, BMP images"
+              ? "Supports PNG, JPEG, WebP, GIF, BMP, TIFF, SVG, HEIC, ICO"
               : "Select or drag PDF documents to begin"
           }
           showToolRecommendations={false}
+        />
+      ) : isViewer ? (
+        <PdfViewerStudio file={files[0].file} onChangeFile={() => setFiles([])} />
+      ) : isAnnotate ? (
+        <PdfAnnotateStudio
+          file={files[0].file}
+          initialMode={modeParam === "sign" || toolSlug === "sign" ? "sign" : "edit"}
+          onChangeFile={() => setFiles([])}
+          onExported={(outName, outBlob) => {
+            enqueue(
+              { title: "Annotate & Sign PDF", tool: "pdf-edit", kind: "pdf", statKind: "pdf" },
+              [
+                {
+                  label: files[0].name,
+                  inputSize: files[0].size,
+                  engine: "local",
+                  run: async () => ({ outputs: [{ name: outName, blob: outBlob }] }),
+                },
+              ]
+            );
+            setDrawer(true);
+          }}
         />
       ) : isOrganize ? (
         // Dedicated Visual Page Organizer Layout for Organize Pages
@@ -946,11 +1017,17 @@ export default function DedicatedPdfToolPage({ params }: Props) {
                         key={t.pageNumber}
                         className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 p-1 flex flex-col items-center"
                       >
-                        <img
-                          src={t.dataUrl}
-                          alt={`Page ${t.pageNumber}`}
-                          className="w-full h-20 object-contain rounded-xs"
-                        />
+                        {t.dataUrl ? (
+                          <img
+                            src={t.dataUrl}
+                            alt={`Page ${t.pageNumber}`}
+                            className="w-full h-20 object-contain rounded-xs"
+                          />
+                        ) : (
+                          <div className="w-full h-20 flex items-center justify-center text-[10px] text-slate-500">
+                            Preview N/A
+                          </div>
+                        )}
                         <span className="text-[9px] font-mono text-slate-400 mt-1">
                           P.{t.pageNumber}
                         </span>
@@ -1567,6 +1644,37 @@ export default function DedicatedPdfToolPage({ params }: Props) {
               </div>
             )}
 
+            {/* Options for Images to PDF */}
+            {isImagesToPdf && (
+              <div>
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+                  Page Layout Size:
+                </label>
+                <div className="grid grid-cols-3 gap-2.5">
+                  {[
+                    { id: "fit", label: "Fit to Image", desc: "Exact image dimensions" },
+                    { id: "a4", label: "A4 Portrait", desc: "595 × 842 pt" },
+                    { id: "letter", label: "US Letter", desc: "612 × 792 pt" },
+                  ].map((sz) => (
+                    <button
+                      key={sz.id}
+                      type="button"
+                      onClick={() => setImagePageSize(sz.id as any)}
+                      className={clsx(
+                        "p-2.5 rounded-xl border text-left text-xs transition-all cursor-pointer",
+                        imagePageSize === sz.id
+                          ? "border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-100 font-semibold"
+                          : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400"
+                      )}
+                    >
+                      <div className="font-bold">{sz.label}</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">{sz.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Options for Page Numbers */}
             {toolSlug === "page-numbers" && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -1580,7 +1688,10 @@ export default function DedicatedPdfToolPage({ params }: Props) {
                     className="w-full px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs focus:outline-hidden"
                   >
                     <option value="bottom-center">Bottom Center</option>
+                    <option value="bottom-left">Bottom Left</option>
                     <option value="bottom-right">Bottom Right</option>
+                    <option value="top-center">Top Center</option>
+                    <option value="top-left">Top Left</option>
                     <option value="top-right">Top Right</option>
                   </select>
                 </div>
@@ -1645,5 +1756,14 @@ export default function DedicatedPdfToolPage({ params }: Props) {
         }}
       />
     </div>
+  );
+}
+
+export default function DedicatedPdfToolPage({ params }: Props) {
+  const { tool: rawToolSlug } = use(params);
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-sm text-slate-400">Loading PDF tool workspace...</div>}>
+      <DedicatedPdfToolPageInner rawToolSlug={rawToolSlug} />
+    </Suspense>
   );
 }

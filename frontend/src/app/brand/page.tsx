@@ -199,7 +199,7 @@ export default function BrandPage() {
 
             <div className="absolute bottom-4 left-0 right-0 text-center">
               <span className="text-[10px] font-mono tracking-widest uppercase text-slate-500">
-                The "T-Nexus" Dual-Facet Monogram
+                The &quot;T-Nexus&quot; Dual-Facet Monogram
               </span>
             </div>
           </div>
@@ -215,7 +215,7 @@ export default function BrandPage() {
               The Geometry of Digital Transformation
             </h2>
             <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-              The symbol communicates the platform's core identity through two precision geometric planes interacting along a calibrated 45-degree conversion channel:
+              The symbol communicates the platform&apos;s core identity through two precision geometric planes interacting along a calibrated 45-degree conversion channel:
             </p>
           </div>
 

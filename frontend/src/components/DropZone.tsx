@@ -72,44 +72,99 @@ export function DropZone({
   const folderInputRef = useRef<HTMLInputElement>(null);
   const addMoreInputRef = useRef<HTMLInputElement>(null);
 
-  // Generate thumbnails for image files
+  // Generate thumbnails for previewable browser image files without revoking still-active URLs
   const [thumbnails, setThumbnails] = useState<Record<string, string>>({});
+  const thumbUrlsRef = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
-    const urls: string[] = [];
-    const newThumbs: Record<string, string> = {};
+    const activeIds = new Set(selectedFiles.map((f) => f.id));
+    let changed = false;
 
+    for (const [id, url] of Array.from(thumbUrlsRef.current.entries())) {
+      if (!activeIds.has(id)) {
+        URL.revokeObjectURL(url);
+        thumbUrlsRef.current.delete(id);
+        changed = true;
+      }
+    }
+
+    const previewableExts = new Set(["png", "jpg", "jpeg", "webp", "gif", "bmp", "svg", "ico", "avif"]);
     for (const f of selectedFiles) {
-      if (f.file.type.startsWith("image/") && !thumbnails[f.id]) {
+      if (thumbUrlsRef.current.has(f.id)) continue;
+      const canBrowserPreview =
+        (f.file.type.startsWith("image/") && !["heic", "heif", "tif", "tiff"].includes(f.extension)) ||
+        previewableExts.has(f.extension);
+      if (canBrowserPreview) {
         try {
-          const url = URL.createObjectURL(f.file);
-          urls.push(url);
-          newThumbs[f.id] = url;
+          thumbUrlsRef.current.set(f.id, URL.createObjectURL(f.file));
+          changed = true;
         } catch {
-          // fallback
+          // ignore
         }
       }
     }
 
-    if (Object.keys(newThumbs).length > 0) {
-      setThumbnails((prev) => ({ ...prev, ...newThumbs }));
+    if (changed) {
+      const next: Record<string, string> = {};
+      for (const [id, url] of thumbUrlsRef.current.entries()) {
+        next[id] = url;
+      }
+      setThumbnails(next);
     }
-
-    return () => {
-      for (const u of urls) URL.revokeObjectURL(u);
-    };
   }, [selectedFiles]);
 
+  useEffect(() => {
+    return () => {
+      for (const url of thumbUrlsRef.current.values()) {
+        URL.revokeObjectURL(url);
+      }
+      thumbUrlsRef.current.clear();
+    };
+  }, []);
+
+  const matchesAccept = useCallback(
+    (file: File): boolean => {
+      if (!accept || !accept.trim()) return true;
+      const ext = extOf(file.name);
+      const mime = (file.type || "").toLowerCase();
+      const tokens = accept
+        .split(",")
+        .map((t) => t.trim().toLowerCase())
+        .filter(Boolean);
+      if (tokens.length === 0) return true;
+      return tokens.some((tok) => {
+        if (tok === "*/*") return true;
+        if (tok.startsWith(".")) return ext === tok.slice(1);
+        if (tok.endsWith("/*")) return mime.startsWith(tok.slice(0, -1));
+        return mime === tok;
+      });
+    },
+    [accept]
+  );
+
+  const isIgnoredSystemFile = (name: string): boolean => {
+    const lower = name.toLowerCase();
+    return (
+      lower === ".ds_store" ||
+      lower === "thumbs.db" ||
+      lower === "desktop.ini" ||
+      name.startsWith("._") ||
+      name.startsWith("~$")
+    );
+  };
+
   const processFiles = useCallback(
-    (fileList: FileList | File[]) => {
+    (fileList: FileList | File[], pathOverrides?: string[]) => {
       const staged: StagedFile[] = [];
       for (let i = 0; i < fileList.length; i++) {
         const file = fileList[i];
         const name = file.name;
+        if (isIgnoredSystemFile(name)) continue;
+        if (!matchesAccept(file)) continue;
         const size = file.size;
         const ext = extOf(name);
         const cat = categoryOf(name);
-        const path = (file as any).webkitRelativePath || name;
+        const path = pathOverrides?.[i] || (file as File & { webkitRelativePath?: string }).webkitRelativePath || name;
 
         staged.push({
           id: `${name}_${size}_${file.lastModified}_${Math.random().toString(36).slice(2, 6)}`,
@@ -121,14 +176,63 @@ export function DropZone({
           extension: ext,
         });
       }
-      onFilesSelected(staged);
+      if (staged.length === 0) return;
+      onFilesSelected(multiple ? staged : [staged[0]]);
     },
-    [onFilesSelected]
+    [matchesAccept, multiple, onFilesSelected]
   );
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragOver(false);
+
+    const items = e.dataTransfer.items;
+    if (items && items.length > 0 && typeof (items[0] as DataTransferItem & { webkitGetAsEntry?: () => FileSystemEntry | null }).webkitGetAsEntry === "function") {
+      const collected: { file: File; path: string }[] = [];
+      const readEntry = async (entry: FileSystemEntry, prefix: string): Promise<void> => {
+        if (entry.isFile) {
+          const file = await new Promise<File>((resolve, reject) => {
+            (entry as FileSystemFileEntry).file(resolve, reject);
+          }).catch(() => null);
+          if (file) {
+            collected.push({ file, path: prefix ? `${prefix}/${file.name}` : file.name });
+          }
+        } else if (entry.isDirectory) {
+          const dirReader = (entry as FileSystemDirectoryEntry).createReader();
+          const entries: FileSystemEntry[] = [];
+          while (true) {
+            const batch = await new Promise<FileSystemEntry[]>((resolve, reject) => {
+              dirReader.readEntries(resolve, reject);
+            }).catch(() => [] as FileSystemEntry[]);
+            if (batch.length === 0) break;
+            entries.push(...batch);
+          }
+          const nextPrefix = prefix ? `${prefix}/${entry.name}` : entry.name;
+          for (const child of entries) {
+            await readEntry(child, nextPrefix);
+          }
+        }
+      };
+
+      const rootEntries: FileSystemEntry[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const entry = (items[i] as DataTransferItem & { webkitGetAsEntry?: () => FileSystemEntry | null }).webkitGetAsEntry?.();
+        if (entry) rootEntries.push(entry);
+      }
+      if (rootEntries.some((en) => en.isDirectory)) {
+        for (const en of rootEntries) {
+          await readEntry(en, "");
+        }
+        if (collected.length > 0) {
+          processFiles(
+            collected.map((c) => c.file),
+            collected.map((c) => c.path)
+          );
+          return;
+        }
+      }
+    }
+
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       processFiles(e.dataTransfer.files);
     }
@@ -147,27 +251,25 @@ export function DropZone({
   const handleSelectFolder = async () => {
     if (typeof window !== "undefined" && "showDirectoryPicker" in window) {
       try {
-        const dirHandle = await (window as any).showDirectoryPicker();
+        const dirHandle = await (window as unknown as { showDirectoryPicker: () => Promise<FileSystemDirectoryHandle> }).showDirectoryPicker();
         const files: File[] = [];
-        async function readDir(handle: any, curPath: string) {
-          for await (const entry of handle.values()) {
+        const paths: string[] = [];
+        async function readDir(handle: FileSystemDirectoryHandle, curPath: string) {
+          for await (const entry of (handle as unknown as { values: () => AsyncIterable<FileSystemHandle> }).values()) {
             if (entry.kind === "file") {
-              const file = await entry.getFile();
-              Object.defineProperty(file, "webkitRelativePath", {
-                value: `${curPath}/${entry.name}`,
-                writable: true,
-              });
+              const file = await (entry as FileSystemFileHandle).getFile();
               files.push(file);
+              paths.push(`${curPath}/${entry.name}`);
             } else if (entry.kind === "directory") {
-              await readDir(entry, `${curPath}/${entry.name}`);
+              await readDir(entry as FileSystemDirectoryHandle, `${curPath}/${entry.name}`);
             }
           }
         }
         await readDir(dirHandle, dirHandle.name);
-        processFiles(files);
+        processFiles(files, paths);
         return;
-      } catch (err: any) {
-        if (err.name === "AbortError") return;
+      } catch (err: unknown) {
+        if ((err as { name?: string })?.name === "AbortError") return;
       }
     }
     folderInputRef.current?.click();

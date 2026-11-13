@@ -37,11 +37,8 @@ export default function RecentFilesPage() {
       alert("This output file is no longer stored in the browser's IndexedDB cache.");
       return;
     }
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = name;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    const { triggerBlobDownload } = await import("@/lib/fileTypes");
+    triggerBlobDownload(blob, name);
   };
 
   const totalStoredBytes = outputs.filter((o) => o.stored).reduce((a, o) => a + o.size, 0);

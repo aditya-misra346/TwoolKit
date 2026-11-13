@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { DropZone, type StagedFile } from "@/components/DropZone";
 import { useQueue } from "@/stores/tasks";
 import { createZip, extractZip, inspectZip, type ZipEntry } from "@/lib/archiveClient";
-import { formatBytes, extOf, categoryOf, CATEGORY_LABEL } from "@/lib/fileTypes";
+import { formatBytes, extOf, baseName, categoryOf, CATEGORY_LABEL } from "@/lib/fileTypes";
 import {
   FolderTree,
   Archive,
@@ -41,7 +41,7 @@ function OrganizerContent() {
   const { enqueue, setDrawer } = useQueue();
 
   const handleComputeNewName = (originalName: string, index: number) => {
-    let base = originalName.slice(0, originalName.lastIndexOf(".")) || originalName;
+    let base = baseName(originalName);
     const ext = extOf(originalName);
 
     if (findText) {

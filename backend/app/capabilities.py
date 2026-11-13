@@ -56,8 +56,23 @@ def _pkg_version(dist: str) -> str | None:
 _MAC_SOFFICE = Path("/Applications/LibreOffice.app/Contents/MacOS/soffice")
 
 
+def _windows_soffice_candidates() -> list[Path]:
+    roots = [
+        os.environ.get("ProgramFiles", r"C:\Program Files"),
+        os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"),
+        os.environ.get("LOCALAPPDATA", ""),
+    ]
+    out: list[Path] = []
+    for root in roots:
+        if not root:
+            continue
+        out.append(Path(root) / "LibreOffice" / "program" / "soffice.exe")
+        out.append(Path(root) / "LibreOffice" / "program" / "soffice.com")
+    return out
+
+
 def find_soffice() -> str | None:
-    """Locate the soffice binary (macOS app bundle first, then PATH)."""
+    """Locate the soffice binary across macOS, Windows, and Linux."""
     env = os.environ.get("VELLUM_SOFFICE")
     if env and Path(env).is_file():
         return env
@@ -66,6 +81,10 @@ def find_soffice() -> str | None:
     home_app = Path.home() / "Applications/LibreOffice.app/Contents/MacOS/soffice"
     if home_app.is_file():
         return str(home_app)
+    if os.name == "nt":
+        for cand in _windows_soffice_candidates():
+            if cand.is_file():
+                return str(cand)
     return _which("soffice") or _which("libreoffice")
 
 

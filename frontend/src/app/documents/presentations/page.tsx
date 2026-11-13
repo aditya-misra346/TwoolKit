@@ -3,10 +3,16 @@
 import { useState } from "react";
 import { DropZone, type StagedFile } from "@/components/DropZone";
 import { useQueue } from "@/stores/tasks";
-import { runServerJob } from "@/lib/api";
+import { runServerJob, hasBackendServer } from "@/lib/api";
+import {
+  extractSlidesClient,
+  presentationToImagesClient,
+  presentationToVideoClient,
+  renderSlidesToPdfClient,
+} from "@/lib/documentClient";
 import { useSettings } from "@/stores/settings";
 import { ConsentModal } from "@/components/ConsentModal";
-import { extOf } from "@/lib/fileTypes";
+import { baseName, extOf } from "@/lib/fileTypes";
 import {
   Presentation,
   Video,
@@ -36,10 +42,48 @@ export default function PresentationStudioPage() {
   const handleRunPresentationTask = () => {
     if (files.length === 0) return;
 
-    if (!useSettings.getState().cloudConsent) {
+    const allHaveClientFallback = files.every((f) =>
+      ["pdf", "pptx", "odp"].includes(extOf(f.name))
+    );
+
+    if (!allHaveClientFallback && !useSettings.getState().cloudConsent) {
       setShowConsentModal(true);
       return;
     }
+
+    const tryServerThenFallback = async (
+      op: string,
+      file: File,
+      options: Record<string, unknown>,
+      ctx: any,
+      fallback: () => Promise<{ outputs: { name: string; blob: Blob }[]; warnings?: string[] }>
+    ) => {
+      const canClient = ["pdf", "pptx", "odp"].includes(extOf(file.name));
+      if (useSettings.getState().cloudConsent && (await hasBackendServer(op))) {
+        try {
+          const res = await runServerJob(op, [file], [file.name], options, ctx.signal, (p, s) =>
+            ctx.progress(p, s)
+          );
+          return { outputs: res.files, warnings: res.warnings };
+        } catch (err: any) {
+          const isServerIssue =
+            err?.status === 404 ||
+            err?.status === 428 ||
+            err?.status === 502 ||
+            err?.status === 503 ||
+            err?.status === 0 ||
+            /not reach|disappeared|HTTP 404|404|503|502|428|NetworkError|active backend service/i.test(
+              err?.message || ""
+            );
+          if (!isServerIssue || !canClient) throw err;
+        }
+      }
+      if (canClient) return await fallback();
+      const res = await runServerJob(op, [file], [file.name], options, ctx.signal, (p, s) =>
+        ctx.progress(p, s)
+      );
+      return { outputs: res.files, warnings: res.warnings };
+    };
 
     if (outputMode === "pdf") {
       enqueue(
@@ -47,13 +91,29 @@ export default function PresentationStudioPage() {
         files.map((f) => ({
           label: f.name,
           inputSize: f.size,
-          engine: "server",
-          run: async (ctx) => {
-            const res = await runServerJob("office.convert", [f.file], [f.name], { target: "pdf" }, ctx.signal, (p, s) =>
-              ctx.progress(p, s)
-            );
-            return { outputs: res.files, warnings: res.warnings };
-          },
+          engine: ["pdf", "pptx", "odp"].includes(extOf(f.name)) ? "local" : "server",
+          run: (ctx) =>
+            tryServerThenFallback(
+              "office.convert",
+              f.file,
+              { target: "pdf", orientation: slideOrientation, dpi: slideDpi },
+              ctx,
+              async () => {
+                const ext = extOf(f.name);
+                if (ext === "pdf") {
+                  return {
+                    outputs: [{ name: `${baseName(f.name)}-slides.pdf`, blob: f.file }],
+                  };
+                }
+                ctx.progress(0.35, "Rendering presentation slides to PDF");
+                const slides = await extractSlidesClient(f.file, ext);
+                const pdfBlob = await renderSlidesToPdfClient(slides, slideOrientation);
+                return {
+                  outputs: [{ name: `${baseName(f.name)}.pdf`, blob: pdfBlob }],
+                  warnings: ["Rendered locally via client slide engine"],
+                };
+              }
+            ),
         }))
       );
     } else if (outputMode === "images") {
@@ -62,13 +122,23 @@ export default function PresentationStudioPage() {
         files.map((f) => ({
           label: f.name,
           inputSize: f.size,
-          engine: "server",
-          run: async (ctx) => {
-            const res = await runServerJob("office.to_images", [f.file], [f.name], { format: imageFormat, dpi: slideDpi }, ctx.signal, (p, s) =>
-              ctx.progress(p, s)
-            );
-            return { outputs: res.files, warnings: res.warnings };
-          },
+          engine: ["pdf", "pptx", "odp"].includes(extOf(f.name)) ? "local" : "server",
+          run: (ctx) =>
+            tryServerThenFallback(
+              "office.to_images",
+              f.file,
+              { format: imageFormat, dpi: slideDpi },
+              ctx,
+              async () => {
+                const imgs = await presentationToImagesClient(
+                  f.file,
+                  imageFormat,
+                  slideDpi,
+                  (p, s) => ctx.progress(p, s)
+                );
+                return { outputs: imgs };
+              }
+            ),
         }))
       );
     } else if (outputMode === "video") {
@@ -77,18 +147,26 @@ export default function PresentationStudioPage() {
         files.map((f) => ({
           label: f.name,
           inputSize: f.size,
-          engine: "server",
-          run: async (ctx) => {
-            const res = await runServerJob(
+          engine: ["pdf", "pptx", "odp"].includes(extOf(f.name)) ? "local" : "server",
+          run: (ctx) =>
+            tryServerThenFallback(
               "office.to_video",
-              [f.file],
-              [f.name],
+              f.file,
               { secondsPerSlide, width: videoWidth },
-              ctx.signal,
-              (p, s) => ctx.progress(p, s)
-            );
-            return { outputs: res.files, warnings: res.warnings };
-          },
+              ctx,
+              async () => {
+                const vid = await presentationToVideoClient(
+                  f.file,
+                  secondsPerSlide,
+                  videoWidth,
+                  (p, s) => ctx.progress(p, s)
+                );
+                return {
+                  outputs: [{ name: vid.name, blob: vid.blob }],
+                  warnings: ["Rendered as WebM slideshow video via in-browser canvas encoder"],
+                };
+              }
+            ),
         }))
       );
     }

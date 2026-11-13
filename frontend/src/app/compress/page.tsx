@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { DropZone, type StagedFile } from "@/components/DropZone";
 import { useQueue } from "@/stores/tasks";
-import { runServerJob } from "@/lib/api";
+import { useSettings } from "@/stores/settings";
+import { runServerJob, hasBackendServer } from "@/lib/api";
 import { compressPdfClient } from "@/lib/pdfClient";
 import { convertAndOptimizeImage } from "@/lib/imageClient";
 import { createZip } from "@/lib/archiveClient";
-import { formatBytes, extOf } from "@/lib/fileTypes";
+import { formatBytes, extOf, baseName } from "@/lib/fileTypes";
 import {
   Minimize2,
   Play,
@@ -45,27 +46,30 @@ export default function FileCompressorPage() {
         run: async (ctx) => {
           const ext = extOf(f.name);
 
-          // 1. PDF -> Use PyMuPDF rewrite_images engine with automatic client fallback
+          // 1. PDF -> Use PyMuPDF rewrite_images engine when backend + consent are active, else client fallback
           if (ext === "pdf") {
-            try {
-              const res = await runServerJob("pdf.compress", [f.file], [f.name], { level: tier }, ctx.signal, (p, s) =>
-                ctx.progress(p, s)
-              );
-              return { outputs: res.files, warnings: res.warnings };
-            } catch {
-              ctx.progress(0.4, "Optimizing PDF structure locally in browser");
-              const clientBlob = await compressPdfClient(f.file, tier);
-              const base = f.name.replace(/\.pdf$/i, "");
-              return {
-                outputs: [
-                  {
-                    name: `${base}-compressed.pdf`,
-                    blob: clientBlob,
-                    note: `In-browser compressed (${formatBytes(clientBlob.size)})`,
-                  },
-                ],
-              };
+            if (useSettings.getState().cloudConsent && (await hasBackendServer("pdf.compress"))) {
+              try {
+                const res = await runServerJob("pdf.compress", [f.file], [f.name], { level: tier }, ctx.signal, (p, s) =>
+                  ctx.progress(p, s)
+                );
+                return { outputs: res.files, warnings: res.warnings };
+              } catch {
+                // Fall back to client optimizer
+              }
             }
+            ctx.progress(0.4, "Optimizing PDF structure locally in browser");
+            const clientBlob = await compressPdfClient(f.file, tier, (p, s) => ctx.progress(p, s));
+            const base = baseName(f.name);
+            return {
+              outputs: [
+                {
+                  name: `${base}-compressed.pdf`,
+                  blob: clientBlob,
+                  note: `In-browser compressed (${formatBytes(clientBlob.size)})`,
+                },
+              ],
+            };
           }
 
           // 2. Images -> In-browser high-efficiency compression
@@ -76,6 +80,8 @@ export default function FileCompressorPage() {
                 ? "webp"
                 : ext === "tif"
                 ? "tiff"
+                : ext === "jpg"
+                ? "jpeg"
                 : (ext as any);
 
             const res = await convertAndOptimizeImage(f.file, {
@@ -84,16 +90,24 @@ export default function FileCompressorPage() {
               stripMetadata: true,
             });
 
-            const base = f.name.slice(0, f.name.lastIndexOf(".")) || f.name;
-            const outExt = targetFormat === "jpeg" ? "jpg" : targetFormat;
+            const base = baseName(f.name);
+            const sameFormat =
+              (targetFormat === "jpeg" && (ext === "jpg" || ext === "jpeg")) ||
+              targetFormat === ext ||
+              (targetFormat === "tiff" && ext === "tif");
+            const keptOriginal = sameFormat && res.blob.size >= f.size;
+            const outBlob = keptOriginal ? f.file : res.blob;
+            const outExt = keptOriginal ? ext : res.format === "jpeg" ? "jpg" : res.format;
             const outName = `${base}-compressed.${outExt}`;
 
             return {
               outputs: [
                 {
                   name: outName,
-                  blob: res.blob,
-                  note: `${res.width}×${res.height} px · ${formatBytes(res.blob.size)}`,
+                  blob: outBlob,
+                  note: keptOriginal
+                    ? `${res.width}×${res.height} px · Already optimal (${formatBytes(f.size)})`
+                    : `${res.width}×${res.height} px · ${formatBytes(res.blob.size)}`,
                 },
               ],
               warnings: res.warnings,

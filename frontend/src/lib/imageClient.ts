@@ -8,9 +8,7 @@
 import exifr from "exifr";
 import UTIF from "utif2";
 import decodeHeic from "heic-decode";
-import bmp from "bmp-js";
-import gifenc from "gifenc";
-const { GIFEncoder, quantize, applyPalette } = gifenc;
+import { GIFEncoder, quantize, applyPalette } from "gifenc";
 import UPNG from "upng-js";
 
 export interface ImageMeta {
@@ -125,7 +123,15 @@ export async function decodeToCanvas(blob: Blob): Promise<HTMLCanvasElement> {
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Canvas context unavailable");
       const imgData = ctx.createImageData(width, height);
-      imgData.data.set(new Uint8ClampedArray(data));
+      const srcBytes =
+        data instanceof ArrayBuffer
+          ? new Uint8ClampedArray(data)
+          : new Uint8ClampedArray(
+              (data as ArrayBufferView).buffer,
+              (data as ArrayBufferView).byteOffset,
+              Math.min((data as ArrayBufferView).byteLength, width * height * 4)
+            );
+      imgData.data.set(srcBytes);
       ctx.putImageData(imgData, 0, 0);
       return canvas;
     } catch (err: any) {
@@ -146,7 +152,7 @@ export async function decodeToCanvas(blob: Blob): Promise<HTMLCanvasElement> {
       .replace(/on\w+\s*=\s*["'][^"']*["']/gi, "")
       .replace(/javascript:/gi, "");
 
-    // Extract viewBox dimensions if fixed width/height are absent
+    // Extract viewBox dimensions if fixed width/height are absent (prevents 0x0 SVG on Firefox)
     let targetW = 800;
     let targetH = 600;
     const vbMatch = svgText.match(/viewBox\s*=\s*["']\s*([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)\s+([\d.-]+)\s*["']/i);
@@ -158,6 +164,12 @@ export async function decodeToCanvas(blob: Blob): Promise<HTMLCanvasElement> {
         targetH = Math.round(vbH);
       }
     }
+    svgText = svgText.replace(/<svg\b([^>]*)>/i, (full, attrs: string) => {
+      let nextAttrs = attrs;
+      if (!/\bwidth\s*=/i.test(nextAttrs)) nextAttrs += ` width="${targetW}"`;
+      if (!/\bheight\s*=/i.test(nextAttrs)) nextAttrs += ` height="${targetH}"`;
+      return `<svg${nextAttrs}>`;
+    });
 
     const sanitizedBlob = new Blob([svgText], { type: "image/svg+xml" });
     return new Promise((resolve, reject) => {
@@ -166,8 +178,8 @@ export async function decodeToCanvas(blob: Blob): Promise<HTMLCanvasElement> {
       img.onload = () => {
         URL.revokeObjectURL(url);
         const canvas = document.createElement("canvas");
-        canvas.width = img.naturalWidth || targetW;
-        canvas.height = img.naturalHeight || targetH;
+        canvas.width = img.naturalWidth > 0 ? img.naturalWidth : targetW;
+        canvas.height = img.naturalHeight > 0 ? img.naturalHeight : targetH;
         const ctx = canvas.getContext("2d");
         if (!ctx) return reject(new Error("Canvas context unavailable"));
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
@@ -403,18 +415,19 @@ export async function convertAndOptimizeImage(
     const ctx = finalCanvas.getContext("2d");
     if (!ctx) throw new Error("Canvas context unavailable");
     const imgData = ctx.getImageData(0, 0, width, height);
+    const rgbaCopy = imgData.data.slice().buffer;
 
     // If quality is high (>=95), use lossless PNG
     if (rawQuality >= 95) {
-      const pngBytes = UPNG.encode([imgData.data.buffer], width, height, 0);
-      const outBlob = new Blob([pngBytes as BlobPart], { type: "image/png" });
+      const pngBytes = UPNG.encode([rgbaCopy], width, height, 0);
+      const outBlob = new Blob([new Uint8Array(pngBytes)], { type: "image/png" });
       return { blob: outBlob, warnings, width, height, format: "png" };
     }
 
     // Lossy PNG quantization (cnum colors: 16 to 256 depending on quality)
     const cnum = Math.max(16, Math.min(256, Math.round((rawQuality / 100) * 256)));
-    const pngBytes = UPNG.encode([imgData.data.buffer], width, height, cnum);
-    const outBlob = new Blob([pngBytes as BlobPart], { type: "image/png" });
+    const pngBytes = UPNG.encode([rgbaCopy], width, height, cnum);
+    const outBlob = new Blob([new Uint8Array(pngBytes)], { type: "image/png" });
     warnings.push(`Quantized to ${cnum} indexed colors for optimized PNG size.`);
     return { blob: outBlob, warnings, width, height, format: "png" };
   }
@@ -425,6 +438,11 @@ export async function convertAndOptimizeImage(
       finalCanvas.toBlob(
         (outBlob) => {
           if (!outBlob) return reject(new Error("Failed to encode WebP image."));
+          if (outBlob.type !== "image/webp") {
+            warnings.push("Browser canvas does not support WebP encoding; output saved as PNG.");
+            resolve({ blob: outBlob, warnings, width, height, format: "png" });
+            return;
+          }
           resolve({ blob: outBlob, warnings, width, height, format: "webp" });
         },
         "image/webp",
@@ -482,27 +500,50 @@ export async function convertAndOptimizeImage(
     return { blob: outBlob, warnings, width, height, format: "gif" };
   }
 
-  // 6. BMP (via bmp-js with genuine Windows Bitmap DIB structure)
+  // 6. BMP (Pure Uint8Array 24-bit BI_RGB Windows Bitmap encoder — browser-safe with zero Node Buffer usage)
   if (targetFormat === "bmp") {
     const flatCanvas = flattenCanvasBackground(finalCanvas, opts.backgroundColor || "#ffffff");
     const ctx = flatCanvas.getContext("2d");
     if (!ctx) throw new Error("Canvas context unavailable");
     const imgData = ctx.getImageData(0, 0, width, height);
+    const src = imgData.data;
 
-    // bmp-js expects ABGR buffer
-    const bmpBuf = Buffer.alloc(imgData.data.length);
-    for (let i = 0; i < imgData.data.length; i += 4) {
-      bmpBuf[i] = imgData.data[i + 3];     // A
-      bmpBuf[i + 1] = imgData.data[i + 2]; // B
-      bmpBuf[i + 2] = imgData.data[i + 1]; // G
-      bmpBuf[i + 3] = imgData.data[i];     // R
+    const rowStride = Math.floor((width * 3 + 3) / 4) * 4;
+    const pixelDataSize = rowStride * height;
+    const fileSize = 54 + pixelDataSize;
+    const out = new Uint8Array(fileSize);
+    const dv = new DataView(out.buffer);
+
+    // BITMAPFILEHEADER (14 bytes)
+    out[0] = 0x42; // 'B'
+    out[1] = 0x4d; // 'M'
+    dv.setUint32(2, fileSize, true);
+    dv.setUint32(10, 54, true);
+
+    // BITMAPINFOHEADER (40 bytes)
+    dv.setUint32(14, 40, true);
+    dv.setInt32(18, width, true);
+    dv.setInt32(22, height, true); // bottom-up DIB
+    dv.setUint16(26, 1, true);
+    dv.setUint16(28, 24, true);
+    dv.setUint32(30, 0, true);
+    dv.setUint32(34, pixelDataSize, true);
+    dv.setInt32(38, 2835, true); // 72 DPI
+    dv.setInt32(42, 2835, true);
+
+    for (let y = 0; y < height; y++) {
+      const srcRowStart = (height - 1 - y) * width * 4;
+      const dstRowStart = 54 + y * rowStride;
+      for (let x = 0; x < width; x++) {
+        const s = srcRowStart + x * 4;
+        const d = dstRowStart + x * 3;
+        out[d] = src[s + 2];     // B
+        out[d + 1] = src[s + 1]; // G
+        out[d + 2] = src[s];     // R
+      }
     }
-    const bmpResult = bmp.encode({
-      data: bmpBuf,
-      width,
-      height,
-    });
-    const outBlob = new Blob([bmpResult.data as BlobPart], { type: "image/bmp" });
+
+    const outBlob = new Blob([out], { type: "image/bmp" });
     warnings.push("BMP format does not support transparency; output flattened.");
     return { blob: outBlob, warnings, width, height, format: "bmp" };
   }
@@ -510,20 +551,30 @@ export async function convertAndOptimizeImage(
   // 7. ICO (Windows Icon standard: max 256x256, PNG-encapsulated with 22-byte ICO header)
   if (targetFormat === "ico") {
     let icoCanvas = finalCanvas;
-    if (width > 256 || height > 256) {
+    if (width > 256 || height > 256 || width !== height) {
+      const size = Math.min(256, Math.max(width, height));
+      const scale = Math.min(size / width, size / height);
+      const dw = Math.max(1, Math.round(width * scale));
+      const dh = Math.max(1, Math.round(height * scale));
       icoCanvas = document.createElement("canvas");
-      icoCanvas.width = 256;
-      icoCanvas.height = 256;
+      icoCanvas.width = size;
+      icoCanvas.height = size;
       const icoCtx = icoCanvas.getContext("2d");
       if (icoCtx) {
-        icoCtx.drawImage(finalCanvas, 0, 0, 256, 256);
-        warnings.push("ICO icon resized to 256×256 standard maximum.");
+        icoCtx.drawImage(
+          finalCanvas,
+          Math.round((size - dw) / 2),
+          Math.round((size - dh) / 2),
+          dw,
+          dh
+        );
+        warnings.push(`ICO icon aspect-fitted into ${size}×${size} square frame.`);
       }
     }
     const icoCtx = icoCanvas.getContext("2d")!;
     const icoImgData = icoCtx.getImageData(0, 0, icoCanvas.width, icoCanvas.height);
     const pngBytes = new Uint8Array(
-      UPNG.encode([icoImgData.data.buffer], icoCanvas.width, icoCanvas.height, 0)
+      UPNG.encode([icoImgData.data.slice().buffer], icoCanvas.width, icoCanvas.height, 0)
     );
 
     const wByte = icoCanvas.width >= 256 ? 0 : icoCanvas.width;
@@ -546,7 +597,7 @@ export async function convertAndOptimizeImage(
     fullIco.set(icoHeader, 0);
     fullIco.set(pngBytes, icoHeader.length);
 
-    const outBlob = new Blob([fullIco as BlobPart], { type: "image/x-icon" });
+    const outBlob = new Blob([fullIco], { type: "image/x-icon" });
     return { blob: outBlob, warnings, width: icoCanvas.width, height: icoCanvas.height, format: "ico" };
   }
 
@@ -555,8 +606,8 @@ export async function convertAndOptimizeImage(
     const ctx = finalCanvas.getContext("2d");
     if (!ctx) throw new Error("Canvas context unavailable");
     const imgData = ctx.getImageData(0, 0, width, height);
-    const tiffBytes = UTIF.encodeImage(new Uint8Array(imgData.data.buffer), width, height);
-    const outBlob = new Blob([tiffBytes as BlobPart], { type: "image/tiff" });
+    const tiffBytes = UTIF.encodeImage(new Uint8Array(imgData.data.slice().buffer), width, height);
+    const outBlob = new Blob([new Uint8Array(tiffBytes)], { type: "image/tiff" });
     return { blob: outBlob, warnings, width, height, format: "tiff" };
   }
 

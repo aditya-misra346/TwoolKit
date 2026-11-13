@@ -5,7 +5,7 @@ export async function GET() {
     engines: {
       client: { available: true, version: "2.0.0", detail: "In-Browser WebAssembly and Web Worker Engine" },
       pdfLib: { available: true, version: "1.17.1", detail: "Client-side PDF manipulation" },
-      pdfJs: { available: true, version: "4.10.38", detail: "Client-side PDF renderer" },
+      pdfJs: { available: true, version: "6.5.438", detail: "Client-side PDF renderer" },
       tesseract: { available: true, version: "7.0.0", detail: "Client-side OCR engine" },
     },
     ops: {

@@ -254,7 +254,12 @@ export async function analyzeFile(
   }
 
   const suspiciousFindings = analyzeSuspiciousCharacteristics(name, size, detectedSignature);
-  const isCorrupted = size > 0 && !detectedSignature && ["pdf", "png", "jpeg", "docx", "xlsx", "zip"].includes(extension);
+  const isCorrupted =
+    size > 0 &&
+    !detectedSignature &&
+    ["pdf", "png", "jpg", "jpeg", "webp", "gif", "bmp", "tif", "tiff", "docx", "xlsx", "pptx", "zip"].includes(
+      extension
+    );
 
   return {
     id: `${name}_${size}_${lastModified}_${Math.random().toString(36).slice(2, 7)}`,
@@ -317,8 +322,8 @@ export function summarizeScan(scannedFiles: ScannedFile[]): ScanResult {
     categoryBytes[f.category] = (categoryBytes[f.category] || 0) + f.size;
     categoryCounts[f.category] = (categoryCounts[f.category] || 0) + 1;
 
-    // Folder extraction
-    const slashIdx = f.path.lastIndexOf("/");
+    // Folder extraction (POSIX and Windows separators)
+    const slashIdx = Math.max(f.path.lastIndexOf("/"), f.path.lastIndexOf("\\"));
     if (slashIdx > 0) {
       folders.add(f.path.slice(0, slashIdx));
     }
