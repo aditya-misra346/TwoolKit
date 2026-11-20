@@ -9,11 +9,6 @@ import {
   FormatDistributionChart,
 } from "@/components/AnalyticsCharts";
 import { analyzeFile } from "@/lib/scanner";
-import {
-  isTauriDesktop,
-  authorizeDesktopDirectory,
-  scanAuthorizedDirectoryNative,
-} from "@/lib/desktop";
 import { formatBytes, formatDate, CATEGORY_LABEL, type Category } from "@/lib/fileTypes";
 import {
   ScanSearch,
@@ -70,20 +65,6 @@ function ScannerContent() {
 
     updateScanProgress(0.98, "Calculating hashes & duplicate clusters");
     await setScanResult(scanned);
-  };
-
-  // Native Desktop Rust Folder Scan
-  const handleNativeFolderScan = async () => {
-    try {
-      const dirPath = await authorizeDesktopDirectory();
-      if (!dirPath) return;
-      updateScanProgress(0.15, `Scanning authorized folder: ${dirPath}`);
-      const scanned = await scanAuthorizedDirectoryNative(dirPath);
-      updateScanProgress(0.95, "Indexing SHA-256 hashes & duplicate clusters");
-      await setScanResult(scanned);
-    } catch (e: any) {
-      alert(e?.message || "Native folder scan requires TwoolKit Desktop.");
-    }
   };
 
   // Filtered files for "all" tab
@@ -147,17 +128,6 @@ function ScannerContent() {
             In-depth inspection of file signatures, SHA-256 cryptographic hashes, perceptual image duplicates, and integrity anomalies.
           </p>
         </div>
-
-        {isTauriDesktop() && (
-          <button
-            type="button"
-            onClick={handleNativeFolderScan}
-            className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm shadow-xs transition-colors flex items-center gap-2 self-start cursor-pointer"
-          >
-            <FolderTree className="w-4 h-4" />
-            <span>Scan Local Folder (Native Rust)</span>
-          </button>
-        )}
       </div>
 
       {/* Intake Dropzone */}

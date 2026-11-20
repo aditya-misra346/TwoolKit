@@ -553,7 +553,7 @@ export async function convertDocumentClient(
 
   if (LEGACY_OLE_INPUTS.has(srcExt) || LEGACY_OLE_INPUTS.has(tgt)) {
     throw new Error(
-      `Legacy binary .${LEGACY_OLE_INPUTS.has(srcExt) ? srcExt : tgt} conversion requires the Local Server Engine or Desktop App.`
+      `Legacy binary .${LEGACY_OLE_INPUTS.has(srcExt) ? srcExt : tgt} conversion requires the Local Server Engine.`
     );
   }
 
@@ -754,7 +754,7 @@ export async function convertDocumentClient(
   }
 
   throw new Error(
-    `Direct client conversion from .${srcExt} to .${tgt} requires the Local Server Engine or Desktop App.`
+    `Direct client conversion from .${srcExt} to .${tgt} requires the Local Server Engine.`
   );
 }
 
